@@ -133,18 +133,39 @@ Everything tried, and its result:
 | Lamina gain, 4 levels | T4 peaks at 0.43 Hz |
 | Higher baseline, 5 levels | Worse — Mi1 range 1.39 → 0.60 Hz as the brain went 7 → 37 Hz |
 | Explicit slow synaptic kinetics on delay-line cells | Peak DSI 0.10 |
-| Spatial frequency, 24 → 3.6 columns/cycle | Peak DSI 0.08 |
+| Spatial frequency, 24 → 2.1 columns/cycle | No better anywhere |
+| Graded rather than spiking units | DSI 0.099 — double, but still nowhere near |
 
-In the animal none of these cells spike: L1, Mi1, T4 and T5 signal with graded
-potentials, and a graded cell can be pushed below baseline as easily as above
-it. That symmetry is precisely what the ON channel needs and what a rate-coded
-spiking model cannot provide. It also explains the pattern of the whole
-battery — the escape pathway is spiking and excitatory end to end, LPLC2 onto
-DNp01, and it reproduces perfectly.
+**What was actually missing: the inhibition has to divide, not subtract.**
 
-The honest conclusion: **a connectome plus uniform LIF dynamics reproduces
-spiking, excitatory, spatial-summation circuits, and fails on graded ones.**
-That is a statement about the model class, not about the data.
+Rebuilding the T4 microcircuit from the real connectome — same weights, same
+column offsets, same signs — and changing only the arithmetic:
+
+| T4 model | Peak DSI |
+|----------|----------|
+| Additive, `relu(Σ w·a)` — what a current-based LIF computes | 0.088 |
+| Shunting, `exc / (1 + β·inh)`, β=1 | 0.325 |
+| Shunting, β=3 | 0.423 |
+| Shunting, β=30 | **0.515** |
+
+Preferred directions stay correctly opposed throughout (T4a 315° vs T4b 135°,
+T4c 225° vs T4d 45°). Direction selectivity is latent in the wiring; extracting
+it requires a divisive interaction, which is a property of a chloride
+conductance rather than of a graph.
+
+This unifies the whole battery:
+
+- **Escape** is spatial summation onto a threshold — additive — and reproduces
+  perfectly.
+- **The Giant Fibre** would not fire at all until its input was normalised by
+  in-degree — a division.
+- **Direction selectivity** needs a division and does not get one, so it fails.
+
+The honest conclusion: **the connectome gives you the graph; the arithmetic is
+not in the graph.** Circuits whose computation is additive reproduce from
+wiring alone. Circuits whose computation is divisive do not, until you supply
+the division yourself. That is a statement about the model class, not about the
+data.
 
 ## Credit
 
