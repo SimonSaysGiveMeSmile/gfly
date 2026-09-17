@@ -98,7 +98,53 @@ Together these took the Giant Fibre from permanently silent to a clean
 | Looming escape | **Holds.** Silent at rest; 0 → 75 Hz under an expanding object, crossing threshold ~660 ms before contact. Fired on 7/7 consecutive looms in-browser. |
 | ON/OFF pathway split | **Holds.** Darkness drives Mi1 3.3 → 0.0 Hz and Tm1/Tm2 1.7 → 9.2 Hz. |
 | Wall following | **Inconclusive.** Stays 12–21 mm from surfaces, but explores too little to separate preference from low mobility. |
-| Optomotor response | **Fails.** Does not reverse turning when the drum reverses. The steering read-out — left/right asymmetry across all 1,304 descending neurons — is almost certainly too crude. |
+| Optomotor response | **Fails.** Does not reverse turning when the drum reverses; direction-selectivity index of every T4/T5 subtype is between −0.02 and +0.06, against ~0.5–0.9 in the animal. See below — it is the most informative result here. |
+
+## Why the optomotor response fails
+
+This took four refuted hypotheses to pin down, so it is worth stating plainly.
+
+**The wiring is not the problem.** Measured across 6,707 T4 cells, the column
+offset between the fast input arm (Mi1, Tm3) and the slow one (Mi9, Mi4, CT1)
+is subtype-specific and opposed:
+
+| Subtype | Offset (hex1, hex2) |
+|---------|---------------------|
+| T4a | (+0.07, −0.20) |
+| T4b | (−0.10, +0.11) |
+| T4c | (−0.36, −0.29) |
+| T4d | (+0.23, +0.36) |
+
+T4a opposes T4b, T4c opposes T4d, and pooled over all four the offset cancels
+to 0.04 — exactly what a four-direction motion detector should look like. The
+substrate for direction selectivity is in the data.
+
+**The problem is that the ON channel cannot be carried by spikes.** L1 is
+glutamatergic, so a bright scene must *release* Mi1 from inhibition rather than
+drive it. In a spiking model a released cell can only rise as far as the
+baseline supports — Mi1 spans **1.4 Hz** — whereas the OFF channel, a plain
+excitatory chain through L2 and Tm2, spans **15 Hz**. With ten times less range,
+T4 never exceeds 0.2 Hz and has nothing to compute with.
+
+Everything tried, and its result:
+
+| Attempted fix | Result |
+|---|---|
+| Lamina gain, 4 levels | T4 peaks at 0.43 Hz |
+| Higher baseline, 5 levels | Worse — Mi1 range 1.39 → 0.60 Hz as the brain went 7 → 37 Hz |
+| Explicit slow synaptic kinetics on delay-line cells | Peak DSI 0.10 |
+| Spatial frequency, 24 → 3.6 columns/cycle | Peak DSI 0.08 |
+
+In the animal none of these cells spike: L1, Mi1, T4 and T5 signal with graded
+potentials, and a graded cell can be pushed below baseline as easily as above
+it. That symmetry is precisely what the ON channel needs and what a rate-coded
+spiking model cannot provide. It also explains the pattern of the whole
+battery — the escape pathway is spiking and excitatory end to end, LPLC2 onto
+DNp01, and it reproduces perfectly.
+
+The honest conclusion: **a connectome plus uniform LIF dynamics reproduces
+spiking, excitatory, spatial-summation circuits, and fails on graded ones.**
+That is a statement about the model class, not about the data.
 
 ## Credit
 
