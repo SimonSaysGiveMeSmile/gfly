@@ -1,37 +1,30 @@
 /**
- * Every use case on GFly is a self-contained product: its own page, its own
- * simulation setup, its own claims about what it demonstrates. The registry
- * holds metadata only, so the index page never pulls a single byte of an
- * experiment's runtime code.
+ * Every experiment is its own product: its own page, its own simulation, its
+ * own claim. The registry holds only metadata, so the index page never loads
+ * an experiment's runtime code.
  */
 
 export type ProductStatus = "live" | "building" | "planned";
 
 export interface Product {
   slug: string;
-  /** Plate number in the field-guide conceit: I, II, III... */
-  plate: string;
+  number: string;
   title: string;
-  /** One line, printed under the title on the card. */
+  /** One plain sentence. */
   tagline: string;
-  /** Two or three sentences for the product page header. */
+  /** Two or three plain sentences. */
   summary: string;
   status: ProductStatus;
-  /** What this proves, if it works. */
+  /** What it proves if it works. */
   claim: string;
-  /** Circuits the experiment actually exercises. */
   circuits: string[];
-  /** Does the brain need to learn anything, or is the wiring enough? */
+  /** Does the brain have to learn anything? */
   learning: "innate" | "plastic" | "hybrid";
-  /** Literature the expected result is checked against. */
   references?: { label: string; href: string }[];
 }
 
 export const LEARNING_COPY: Record<Product["learning"], string> = {
-  innate:
-    "No training. The behaviour has to fall out of the wiring diagram alone.",
-  plastic:
-    "Requires plasticity. The connectome supplies the circuit; the synapses have to change.",
-  hybrid:
-    "Innate circuitry doing the work, with plasticity only where the fly has it.",
+  innate: "No training. The wiring has to do it on its own.",
+  plastic: "Needs learning. The wiring supplies the circuit; the connections have to change.",
+  hybrid: "Mostly built in, with learning only where the fly has it.",
 };

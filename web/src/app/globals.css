@@ -1,202 +1,142 @@
 @import "tailwindcss";
 
 /*
- * GFly design language: a Victorian entomological plate wired into a modern
- * instrument panel. Specimen-jar darkness, parchment type, the carmine of a
- * wild-type Drosophila eye, brass pin gold, and oscilloscope phosphor for
- * anything that is actually alive on screen.
+ * GFly. Dark, glass, sans-serif. The visualisations are the colour; the
+ * chrome stays out of the way.
  */
 
 @theme {
-  --color-ink: #0c0e0a;
-  --color-ink-2: #12150f;
-  --color-plate: #171b14;
-  --color-plate-2: #1e2319;
-  --color-rule: #2c3326;
-  --color-rule-bright: #46503c;
+  --color-bg: #000000;
+  --color-bg-2: #0b0b0e;
+  --color-glass: rgba(255, 255, 255, 0.07);
+  --color-glass-2: rgba(255, 255, 255, 0.11);
+  --color-line: rgba(255, 255, 255, 0.10);
+  --color-line-2: rgba(255, 255, 255, 0.18);
 
-  --color-bone: #e9e4d4;
-  --color-bone-dim: #b6b2a2;
-  --color-bone-faint: #7d7a6d;
+  --color-label: #f5f5f7;
+  --color-label-2: rgba(235, 235, 245, 0.62);
+  --color-label-3: rgba(235, 235, 245, 0.34);
 
-  --color-carmine: #d8402c;
-  --color-carmine-dim: #8e2a1d;
-  --color-brass: #c9a94e;
-  --color-phosphor: #63e0b4;
-  --color-cornflower: #7fa5e8;
+  --color-blue: #0a84ff;
+  --color-green: #30d158;
+  --color-orange: #ff9f0a;
+  --color-red: #ff453a;
+  --color-purple: #bf5af2;
+  --color-teal: #40c8e0;
 
-  --font-display: var(--font-bodoni), "Bodoni Moda", Didot, serif;
-  --font-body: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+
+  --radius-card: 28px;
+  --radius-inner: 18px;
 }
 
-:root {
-  color-scheme: dark;
-}
-
-html {
-  background: var(--color-ink);
-}
+:root { color-scheme: dark; }
+html { background: var(--color-bg); }
 
 body {
-  background: var(--color-ink);
-  color: var(--color-bone);
-  font-family: var(--font-body);
-  font-feature-settings: "ss01", "cv05";
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Paper grain. Fixed so it reads as the surface the page is printed on,
-   not as something scrolling past. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-::selection {
-  background: var(--color-carmine);
-  color: var(--color-ink);
-}
-
-/* ---- Typography ------------------------------------------------------- */
-
-.display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 0.92;
-}
-
-.plate-label {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--color-bone-faint);
-}
-
-.readout {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  background: var(--color-bg);
+  color: var(--color-label);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.45;
   letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum", "ss01";
 }
 
-/* ---- Plate: the framed panel everything lives in ---------------------- */
+::selection { background: var(--color-blue); color: white; }
 
-.plate {
-  position: relative;
-  background: var(--color-plate);
-  border: 1px solid var(--color-rule);
+/* ---- Type ------------------------------------------------------------ */
+
+.t-large { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+.t-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.t-head  { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
+.t-body  { font-size: 1.0625rem; color: var(--color-label-2); }
+.t-foot  { font-size: 0.8125rem; color: var(--color-label-2); }
+.t-cap   { font-size: 0.75rem; font-weight: 500; color: var(--color-label-3); letter-spacing: 0.01em; }
+.num     { font-variant-numeric: tabular-nums; }
+
+/* ---- Glass ------------------------------------------------------------ */
+
+.glass {
+  background: var(--color-glass);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
-/* Engraved corner ticks, like registration marks on a printing plate. */
-.plate::before,
-.plate::after {
-  content: "";
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border-color: var(--color-rule-bright);
-  pointer-events: none;
-}
-.plate::before {
-  top: -1px; left: -1px;
-  border-top: 1px solid; border-left: 1px solid;
-  box-shadow: inset 1px 1px 0 var(--color-rule-bright);
-}
-.plate::after {
-  bottom: -1px; right: -1px;
-  border-bottom: 1px solid; border-right: 1px solid;
+.glass-inner {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-inner);
+  overflow: hidden;
 }
 
-.hairline {
-  border: 0;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    var(--color-rule-bright),
-    var(--color-rule) 40%,
-    transparent
-  );
-}
-
-/* ---- Motion ----------------------------------------------------------- */
-
-@keyframes rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: none; }
-}
-
-.rise {
-  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-
-@keyframes pulse-live {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
-}
-
-.live-dot {
-  animation: pulse-live 1.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rise, .live-dot { animation: none; }
-}
-
-/* ---- Scrollbars ------------------------------------------------------- */
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-rule-bright) transparent;
+/* Background wash so the glass has something to blur. */
+.wash {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 0%, rgba(10, 132, 255, 0.18), transparent 60%),
+    radial-gradient(50% 40% at 85% 10%, rgba(191, 90, 242, 0.14), transparent 60%),
+    radial-gradient(60% 60% at 50% 100%, rgba(48, 209, 88, 0.08), transparent 60%),
+    var(--color-bg);
 }
 
 /* ---- Controls ---------------------------------------------------------- */
 
-.btn,
-.btn-primary,
-.btn-danger {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 0.55rem 0.9rem;
-  border: 1px solid var(--color-rule);
-  color: var(--color-bone-dim);
-  background: transparent;
+.btn, .btn-primary, .btn-danger, .btn-on {
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 0.6rem 1.05rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-glass-2);
+  color: var(--color-label);
   cursor: pointer;
-  transition: color 0.18s, border-color 0.18s, background-color 0.18s;
+  transition: background-color 0.15s, transform 0.12s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.16); }
+.btn:active, .btn-primary:active, .btn-danger:active, .btn-on:active { transform: scale(0.97); }
+.btn-primary { background: var(--color-blue); color: white; }
+.btn-primary:hover { background: #2a94ff; }
+.btn-danger { background: rgba(255, 69, 58, 0.16); color: var(--color-red); border-color: rgba(255, 69, 58, 0.3); }
+.btn-on { background: rgba(10, 132, 255, 0.2); color: #6fb6ff; border-color: rgba(10, 132, 255, 0.45); }
+.btn:disabled, .btn-primary:disabled { opacity: 0.45; cursor: default; }
+
+.btn:focus-visible, .btn-primary:focus-visible, .btn-danger:focus-visible, .btn-on:focus-visible {
+  outline: 2px solid var(--color-blue); outline-offset: 2px;
 }
 
-.btn:hover {
-  color: var(--color-bone);
-  border-color: var(--color-rule-bright);
+/* Segmented control */
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+.seg > button {
+  flex: 1; font: inherit; font-size: 0.875rem; font-weight: 600; padding: 0.55rem 0.6rem;
+  border-radius: 11px; border: 0; background: transparent; color: var(--color-label-2); cursor: pointer;
+  transition: background-color 0.15s, color 0.15s; white-space: nowrap;
 }
+.seg > button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.16); color: var(--color-label); }
 
-.btn-primary {
-  border-color: var(--color-carmine);
-  background: var(--color-carmine);
-  color: var(--color-ink);
-}
-.btn-primary:hover {
-  background: transparent;
-  color: var(--color-carmine);
-}
+/* Status pill */
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.pill-green { background: rgba(48, 209, 88, 0.16); color: var(--color-green); }
+.pill-orange { background: rgba(255, 159, 10, 0.16); color: var(--color-orange); }
+.pill-red { background: rgba(255, 69, 58, 0.16); color: var(--color-red); }
+.pill-gray { background: rgba(255, 255, 255, 0.1); color: var(--color-label-2); }
 
-.btn-danger {
-  border-color: var(--color-carmine);
-  color: var(--color-carmine);
-}
+/* ---- Motion ------------------------------------------------------------ */
 
-.btn:focus-visible,
-.btn-primary:focus-visible,
-.btn-danger:focus-visible {
-  outline: 2px solid var(--color-brass);
-  outline-offset: 2px;
-}
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-green); animation: pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .rise, .live-dot { animation: none; } }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }

@@ -12,9 +12,10 @@ import {
   FURNITURE, ROOM_H, ROOM_W, castRay, distanceToWall, launchThreat,
   makeWorld, stepBody, type World,
 } from "./world";
-import type { AssayName, AssayReport, FromWorker, Telemetry, ToWorker } from "./protocol";
+import { RETINA_CH, type AssayName, type AssayReport, type FromWorker, type Telemetry, type ToWorker } from "./protocol";
 
-const post = (m: FromWorker) => self.postMessage(m);
+const post = (m: FromWorker, transfer?: Transferable[]) =>
+  transfer ? self.postMessage(m, transfer) : self.postMessage(m);
 
 /** Simulation timestep, ms. 1 ms keeps the whole brain at ~1x real time. */
 const DT = 1.0;
@@ -93,6 +94,18 @@ let loomHit = false, loomArmed = false;
 let adaptL: Float32Array = new Float32Array(0);
 let adaptR: Float32Array = new Float32Array(0);
 
+// Simulated time of each neuron's last spike. Written only on a spike, so
+// keeping it costs nothing per step; the decayed activity the viewer wants is
+// computed from it only when a frame is sent.
+let lastSpike: Float32Array = new Float32Array(0);
+/** How fast a spike fades on screen, ms. */
+const GLOW_TAU = 70;
+
+// Last sensory frame per column, kept so the retina panels can show what the
+// eye saw alongside what the lamina did with it.
+let retinaL: Uint8Array = new Uint8Array(0);
+let retinaR: Uint8Array = new Uint8Array(0);
+
 self.onmessage = async (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   try {
@@ -153,13 +166,41 @@ async function load(tier: number) {
 
   adaptL = new Float32Array(circuits.retinaL.columns.length).fill(0.5);
   adaptR = new Float32Array(circuits.retinaR.columns.length).fill(0.5);
+  lastSpike = new Float32Array(g.n).fill(-1e9);
+  retinaL = new Uint8Array(circuits.retinaL.columns.length * RETINA_CH);
+  retinaR = new Uint8Array(circuits.retinaR.columns.length * RETINA_CH);
   settle();
+
+  // Soma positions for the brain view. Neurons without a reconstructed soma
+  // (photoreceptors, mostly - their cell bodies sit in the retina, outside the
+  // imaged volume) simply have no point.
+  const withSoma: number[] = [];
+  for (let i = 0; i < nt.n; i++) {
+    if (nt.soma[i * 3] !== 0 || nt.soma[i * 3 + 1] !== 0 || nt.soma[i * 3 + 2] !== 0) withSoma.push(i);
+  }
+  const somaXYZ = new Float32Array(withSoma.length * 3);
+  const somaNeuron = new Uint32Array(withSoma.length);
+  withSoma.forEach((i, k) => {
+    somaXYZ[k * 3] = nt!.soma[i * 3];
+    somaXYZ[k * 3 + 1] = nt!.soma[i * 3 + 1];
+    somaXYZ[k * 3 + 2] = nt!.soma[i * 3 + 2];
+    somaNeuron[k] = i;
+  });
+
+  const layout = (cols: { u: number; v: number }[]) => {
+    const a = new Float32Array(cols.length * 2);
+    cols.forEach((c, i) => { a[i * 2] = c.u; a[i * 2 + 1] = c.v; });
+    return a;
+  };
 
   post({
     type: "ready",
     neurons: g.n, edges: g.edges, threshold: g.threshold,
     columnsL: circuits.retinaL.columns.length,
     columnsR: circuits.retinaR.columns.length,
+    retinaLayoutL: layout(circuits.retinaL.columns),
+    retinaLayoutR: layout(circuits.retinaR.columns),
+    somaXYZ, somaNeuron,
     populations: {
       "L1/L2 columns": circuits.retinaL.columns.length + circuits.retinaR.columns.length,
       "T4": circuits.t4.length, "T5": circuits.t5.length,
@@ -180,6 +221,7 @@ function doReset() {
   epgCounts.fill(0);
   for (const k of Object.keys(counts) as RateKey[]) { counts[k] = 0; smooth[k] = 0; }
   adaptL.fill(0.5); adaptR.fill(0.5);
+  lastSpike.fill(-1e9);
   settle();
   assay = null; assayClock = 0;
   loomTrials = 0; loomHits = 0; loomHit = false; loomArmed = false;
@@ -192,23 +234,23 @@ function startAssay(name: AssayName | null) {
   const base = { name, verdict: "running" as const, series: [], };
   if (name === "optomotor") {
     world.drumSpeed = 1.6;
-    assay = { ...base, labels: ["drum (rad/s)", "fly turn (rad/s)"],
-      expected: "The fly should turn with the drum. Published optomotor gain in walking Drosophila is roughly 0.3-0.7 of stimulus velocity.",
-      detail: "Rotating the surround and measuring how much of that rotation the fly follows." };
+    assay = { ...base, labels: ["stripes, turning speed", "fly, turning speed"],
+      expected: "The fly should turn the same way as the stripes, at about a third to two thirds of their speed.",
+      detail: "Spinning the stripes and measuring how much the fly turns with them." };
   } else if (name === "looming") {
     assay = { ...base, labels: ["loom size (rad)", "Giant Fibre (Hz)"],
-      expected: "LPLC2 should drive DNp01 only as the loom nears contact, producing a short burst rather than a sustained response.",
-      detail: "Launching an expanding dark object and watching the Giant Fibre." };
+      expected: "The Giant Fiber should fire a short burst just before the object hits, and stay quiet otherwise.",
+      detail: "Sending a dark object at the fly and watching the Giant Fiber." };
     loomTrials = 0; loomHits = 0; loomHit = false; loomArmed = true;
     launchThreat(world, world.fly.heading + 0.2);
   } else if (name === "wall") {
-    assay = { ...base, labels: ["distance to wall (mm)", "mean (mm)"],
-      expected: "Walking flies hug walls. Median distance to the nearest wall should stay well under a quarter of the arena width.",
-      detail: "Letting the fly walk freely and measuring where it spends its time." };
+    assay = { ...base, labels: ["distance to wall, mm", "average, mm"],
+      expected: "Walking flies keep close to walls. The average distance should stay under 200 mm.",
+      detail: "Letting the fly walk and measuring where it spends its time." };
   } else {
-    assay = { ...base, labels: ["heading (rad)", "bump position (rad)"],
-      expected: "The EPG bump should track heading, drifting slowly rather than jumping or dying out.",
-      detail: "Comparing the compass bump in the ellipsoid body against true heading." };
+    assay = { ...base, labels: ["true heading", "compass reading"],
+      expected: "The compass should follow the heading, drifting slowly rather than jumping or going dark.",
+      detail: "Comparing the brain's compass against the direction the fly is really facing." };
   }
 }
 
@@ -261,6 +303,10 @@ function drive(eye: "L" | "R") {
     );
     for (const n of col.on) sim.setBias(n, mv);
     for (const n of col.off) sim.setBias(n, mv);
+
+    const rec = eye === "L" ? retinaL : retinaR;
+    rec[c * RETINA_CH] = (lum * 255) | 0;
+    rec[c * RETINA_CH + 1] = ((mv / LAMINA_CAP) * 255) | 0;
   }
 
   // The looming pathway gets its drive from the same scene, but LPLC2 responds
@@ -364,10 +410,8 @@ function updateAssay(hzL: number, hzR: number) {
       const gain = mean(recent.map((s) => s.b)) / (world.drumSpeed || 1);
       assay.verdict = gain > 0.12 ? "pass" : "fail";
       assay.detail =
-        `Optomotor gain ${gain.toFixed(2)} against a drum at ${world.drumSpeed.toFixed(1)} rad/s. ` +
-        (gain > 0.12
-          ? "The fly follows the surround, which is the response the wiring should produce."
-          : "The fly is not following the surround.");
+        `The fly turns at ${gain.toFixed(2)} of the stripes' speed. ` +
+        (gain > 0.12 ? "It is following them." : "It is not following them.");
     }
   } else if (assay.name === "looming") {
     assay.series.push({ t: assayClock, a: world.threat.size, b: gfHz });
@@ -389,10 +433,8 @@ function updateAssay(hzL: number, hzR: number) {
     if (loomTrials > 0) {
       assay.verdict = loomHits / loomTrials >= 0.5 ? "pass" : "fail";
       assay.detail =
-        `Giant Fibre fired on ${loomHits} of ${loomTrials} looms` +
-        (loomHits
-          ? `, peaking mid-expansion and committing the body to an escape.`
-          : `. The object reached contact without an escape being triggered.`);
+        `The Giant Fiber fired on ${loomHits} of ${loomTrials} tries` +
+        (loomHits ? `, and the fly jumped.` : `. The object arrived and the fly did not jump.`);
     }
 
     // Relaunch, always somewhere the eyes can actually see.
@@ -411,10 +453,8 @@ function updateAssay(hzL: number, hzR: number) {
     if (assayClock > 10) {
       assay.verdict = m < ROOM_H / 4 ? "pass" : "fail";
       assay.detail =
-        `Mean distance to the nearest surface ${m.toFixed(0)} mm, against an arena half-width of ${(ROOM_H / 2).toFixed(0)} mm. ` +
-        (m < ROOM_H / 4
-          ? "The fly is staying near walls, as walking Drosophila do."
-          : "The fly is spending too much time in open floor.");
+        `On average the fly is ${m.toFixed(0)} mm from the nearest wall. ` +
+        (m < ROOM_H / 4 ? "It is keeping close to walls, like a real fly." : "It is spending too long in the open.");
     }
   } else {
     const bump = bumpPosition();
@@ -424,8 +464,8 @@ function updateAssay(hzL: number, hzR: number) {
       const alive = epgCounts.some((c) => c > 0);
       assay.verdict = alive ? "pass" : "fail";
       assay.detail = alive
-        ? "The ellipsoid body is carrying a bump of activity while the fly turns."
-        : "No sustained activity in the EPG population.";
+        ? "The compass ring is active and moving with the fly."
+        : "The compass ring has gone quiet.";
     }
   }
 }
@@ -463,6 +503,8 @@ function loop() {
     }
     const fired = sim.step(DT);
     spikeAccum += fired;
+
+    for (let k = 0; k < fired; k++) lastSpike[sim.spikes[k]] = simMs;
 
     if (tag) {
       for (let k = 0; k < fired; k++) {
@@ -541,7 +583,36 @@ function sendTelemetry() {
     epgBump: Array.from(epgCounts, (c) => c / peak),
     assay,
   };
-  post({ type: "telemetry", data });
+  // Glow per neuron from its last spike, and per-column L1/L2 firing for the
+  // retina panels. Both are fresh buffers so they can be handed over
+  // zero-copy rather than cloned.
+  const activity = new Uint8Array(sim.n);
+  const now = simMs;
+  for (let i = 0; i < sim.n; i++) {
+    const age = now - lastSpike[i];
+    activity[i] = age < GLOW_TAU * 5 ? (255 * Math.exp(-age / GLOW_TAU)) | 0 : 0;
+  }
+  const glow = (idx: number[]) => {
+    let best = 1e9;
+    for (const n of idx) { const a = now - lastSpike[n]; if (a < best) best = a; }
+    return best < GLOW_TAU * 5 ? (255 * Math.exp(-best / GLOW_TAU)) | 0 : 0;
+  };
+  const packRetina = (src: Uint8Array, cols: CircuitMap["retinaL"]["columns"]) => {
+    const out = new Uint8Array(src.length);
+    out.set(src);
+    for (let c = 0; c < cols.length; c++) {
+      out[c * RETINA_CH + 2] = glow(cols[c].on);
+      out[c * RETINA_CH + 3] = glow(cols[c].off);
+    }
+    return out;
+  };
+  const rl = packRetina(retinaL, circuits.retinaL.columns);
+  const rr = packRetina(retinaR, circuits.retinaR.columns);
+
+  post(
+    { type: "telemetry", data, activity, retinaL: rl, retinaR: rr },
+    [activity.buffer, rl.buffer, rr.buffer],
+  );
 }
 
 export {};

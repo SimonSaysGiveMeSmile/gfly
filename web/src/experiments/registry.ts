@@ -1,113 +1,94 @@
 import type { Product } from "./types";
 
-/**
- * The catalogue. Order is the order they appear on the index page, and the
- * plate numbers are stable once published - they get cited.
- */
 export const PRODUCTS: Product[] = [
   {
     slug: "baseline-room",
-    plate: "I",
-    title: "The Baseline Room",
-    tagline: "Put the brain in a room and see whether it behaves like a fly.",
+    number: "01",
+    title: "The Room",
+    tagline: "Put the brain in a room and see if it acts like a fly.",
     summary:
-      "An indoor arena with walls, a window, a lamp and a moving threat. The connectome drives a body through it with nothing added: no training, no scripted behaviour, no hand-written controller. Either the wiring produces a fly or it does not.",
+      "A small room with walls, a window, some furniture and a threat. The real connectome drives a body through it. No training, no scripted behaviour, no hand-written controller.",
     status: "live",
     claim:
-      "The wiring diagram alone should reproduce four measured Drosophila behaviours. Two of them survive contact with the model, one is ambiguous, and one fails outright - which is the result, not a bug in the write-up.",
-    circuits: ["R1-R6", "L1-L5", "T4/T5", "LPLC2", "DNp01", "EPG", "descending neurons"],
+      "The wiring alone should produce four known fly behaviours. Two do. One is unclear. One does not, and the page says why.",
+    circuits: ["Eyes", "Motion cells", "Loom cells", "Giant Fiber", "Compass", "Steering neurons"],
     learning: "innate",
     references: [
-      {
-        label: "Shiu et al. 2024 — a Drosophila computational brain model",
-        href: "https://www.nature.com/articles/s41586-024-07763-9",
-      },
-      {
-        label: "Klapoetke et al. 2017 — LPLC2 loom detection",
-        href: "https://www.nature.com/articles/nature24626",
-      },
-      {
-        label: "Seelig & Jayaraman 2015 — the heading compass",
-        href: "https://www.nature.com/articles/nature14446",
-      },
+      { label: "Shiu et al. 2024 — a whole-brain fly model", href: "https://www.nature.com/articles/s41586-024-07763-9" },
+      { label: "Klapoetke et al. 2017 — how the fly sees things coming", href: "https://www.nature.com/articles/nature24626" },
+      { label: "Seelig & Jayaraman 2015 — the fly's compass", href: "https://www.nature.com/articles/nature14446" },
     ],
   },
   {
     slug: "mahjong-lobby",
-    plate: "II",
-    title: "The Mahjong Lobby",
-    tagline: "Teach the fly a game no fly has ever played, against real people.",
+    number: "02",
+    title: "Mahjong",
+    tagline: "Teach the fly a game and let it play real people.",
     summary:
-      "An online mahjong table where one seat is a fruit fly. Nothing in 400 million years of insect evolution prepared this brain for tile games, so the wiring cannot supply the answer - the synapses have to change. The honest place to put that change is the mushroom body, which is the fly's actual reinforcement-learning organ.",
+      "An online mahjong table where one seat is a fruit fly. Nothing in a fly's evolution prepared it for tile games, so the connections have to change. The place to do that is the mushroom body, the fly's real learning centre.",
     status: "planned",
-    claim:
-      "A 4,064-cell Kenyon-cell layer with reward-gated KC to MBON plasticity can learn a discard policy well enough to play a real hand.",
-    circuits: ["KC (4,064)", "MBON (97)", "PAM/PPL1 dopaminergic", "descending neurons"],
+    claim: "The mushroom body's 4,064 learning cells can pick up a playable strategy from wins and losses.",
+    circuits: ["Mushroom body", "Reward neurons", "Steering neurons"],
     learning: "plastic",
   },
   {
     slug: "compass-bench",
-    plate: "III",
-    title: "The Compass Bench",
-    tagline: "Watch a ring attractor hold a heading in the dark.",
+    number: "03",
+    title: "The Compass",
+    tagline: "Watch 46 neurons hold a heading in the dark.",
     summary:
-      "Forty-six EPG neurons in the ellipsoid body carry a single bump of activity that tracks which way the fly is pointing. Rotate the world and the bump follows; turn the lights off and it keeps going on self-motion alone. This is dead reckoning, in a circuit small enough to watch neuron by neuron.",
+      "The fly has a ring of 46 cells that carries one bump of activity pointing the way it faces. Turn the world and the bump follows. Turn off the lights and it keeps going on its own.",
     status: "planned",
-    claim:
-      "The EPG/PEN loop sustains a single activity bump and integrates turning velocity without visual input.",
-    circuits: ["EPG (46)", "PEN_a/PEN_b (42)", "PEG", "Delta7"],
+    claim: "The compass ring holds one stable bump and tracks turning without any visual input.",
+    circuits: ["Compass ring", "Turn cells"],
     learning: "innate",
   },
   {
     slug: "odour-plume",
-    plate: "IV",
-    title: "The Odour Plume",
-    tagline: "Fifty-three receptor channels, one meal to find.",
+    number: "04",
+    title: "The Smell",
+    tagline: "Fifty-three kinds of smell receptor, one meal to find.",
     summary:
-      "Real flies find fruit by casting across a turbulent plume, surging upwind on contact and casting again when they lose it. The antennal lobe and lateral horn are fully wired here, so the strategy should emerge rather than be programmed.",
+      "Real flies find fruit by zig-zagging across a plume of scent. The whole smell system is wired here, so the search strategy should appear on its own.",
     status: "planned",
-    claim:
-      "ORN to projection-neuron to lateral-horn wiring produces cast-and-surge plume tracking without a search heuristic.",
-    circuits: ["ORN (53 types)", "antennal lobe PNs", "lateral horn", "MB calyx"],
+    claim: "The smell circuits produce zig-zag plume tracking without a programmed search.",
+    circuits: ["Smell receptors", "Antennal lobe", "Lateral horn"],
     learning: "innate",
   },
   {
     slug: "lesion-studio",
-    plate: "V",
-    title: "The Lesion Studio",
-    tagline: "Delete any cell type. Find out what it was for.",
+    number: "05",
+    title: "Lesions",
+    tagline: "Switch off any cell type. See what breaks.",
     summary:
-      "The experiment a connectome makes cheap: silence a population, rerun the same behavioural battery, and measure exactly what breaks. Cut the Giant Fiber and escape should get slower, not vanish. Cut T4 and the fly should stop turning with the world but keep walking.",
+      "Silence a group of neurons, run the same tests, and measure what changes. Cut the Giant Fiber and the escape should slow down, not vanish. Cut the motion cells and the fly should stop turning with the world but keep walking.",
     status: "planned",
-    claim:
-      "In-silico ablation reproduces the behavioural deficits reported from genetic silencing experiments.",
-    circuits: ["any of 11,852 annotated cell types"],
+    claim: "Switching off cell types in the model matches what happens when they are switched off in real flies.",
+    circuits: ["Any of 11,852 cell types"],
     learning: "innate",
   },
   {
     slug: "silicon-retina",
-    plate: "VI",
-    title: "The Silicon Retina",
-    tagline: "Borrow the fly's motion detector and point it at your webcam.",
+    number: "06",
+    title: "The Retina",
+    tagline: "Point the fly's motion detector at your webcam.",
     summary:
-      "T4 and T5 are 13,580 elementary motion detectors that solved optical flow long before anyone wrote a paper about it. Lift that subcircuit out of the brain, feed it any video, and use it as a motion estimator that costs no training data at all.",
+      "The fly has 13,580 tiny motion detectors that work with no training. Take that part of the brain out, feed it video, and use it as a motion sensor.",
     status: "planned",
-    claim:
-      "The extracted T4/T5 subnetwork computes a dense optical-flow field competitive with classical estimators on natural video.",
-    circuits: ["R1-R6", "L1-L5", "Mi1/Tm3", "T4a-d", "T5a-d"],
+    claim: "The fly's motion circuit computes usable optical flow on real video.",
+    circuits: ["Eyes", "Lamina", "Motion cells"],
     learning: "innate",
   },
   {
     slug: "atlas",
-    plate: "VII",
+    number: "07",
     title: "The Atlas",
-    tagline: "139,000 cell bodies, and the shortest path between any two.",
+    tagline: "Every neuron, and the shortest path between any two.",
     summary:
-      "A spatial browser over every soma in the volume, with connectivity queries on top: pick two neurons and get the actual chain of cells that links them, hop by hop, with synapse counts on every step.",
+      "A 3D map of all 139,000 cell bodies. Pick two neurons and get the chain of cells that connects them, with the number of synapses at each step.",
     status: "building",
-    claim:
-      "Whole-brain spatial and path queries answered client-side, with no backend and no API key.",
-    circuits: ["all 163,997 neurons in the graph"],
+    claim: "Whole-brain path queries answered in the browser, with no server.",
+    circuits: ["All 163,997 neurons"],
     learning: "innate",
   },
 ];

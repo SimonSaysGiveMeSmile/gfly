@@ -11,8 +11,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/lab/[slug]">) {
   const p = PRODUCT_BY_SLUG.get((await params).slug);
-  if (!p) return {};
-  return { title: p.title, description: p.tagline };
+  return p ? { title: p.title, description: p.tagline } : {};
 }
 
 export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
@@ -20,69 +19,45 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="mx-auto max-w-[1400px] px-6 py-14 lg:px-10">
-      <header className="border-b border-rule pb-10">
-        <div className="flex items-baseline gap-4">
-          <Link href="/" className="plate-label hover:text-bone">
-            ← Index
-          </Link>
-          <span className="plate-label">Pl.&nbsp;{product.plate}</span>
-        </div>
-
-        <h1 className="display mt-6 text-[clamp(2.5rem,6vw,5rem)] text-bone">
-          {product.title}
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-bone-dim">
-          {product.summary}
-        </p>
-
-        <div className="mt-8 grid gap-6 border-t border-rule pt-8 sm:grid-cols-3">
-          <div>
-            <p className="plate-label">The claim</p>
-            <p className="mt-2 text-sm leading-relaxed text-bone">{product.claim}</p>
+    <article className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
+      <header className="mb-8">
+        <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
+        <h1 className="t-large mt-4">{product.title}</h1>
+        <p className="t-body mt-4 max-w-2xl">{product.summary}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="glass p-5">
+            <p className="t-cap">What it claims</p>
+            <p className="mt-2 text-[15px]">{product.claim}</p>
           </div>
-          <div>
-            <p className="plate-label">Learning</p>
-            <p className="mt-2 text-sm leading-relaxed text-bone-dim">
-              {LEARNING_COPY[product.learning]}
-            </p>
+          <div className="glass p-5">
+            <p className="t-cap">Learning</p>
+            <p className="t-body mt-2 text-[15px]">{LEARNING_COPY[product.learning]}</p>
           </div>
-          <div>
-            <p className="plate-label">Circuits</p>
-            <ul className="readout mt-2 flex flex-wrap gap-1.5 text-[0.65rem] text-bone-faint">
-              {product.circuits.map((c) => (
-                <li key={c} className="border border-rule px-1.5 py-0.5">{c}</li>
-              ))}
+          <div className="glass p-5">
+            <p className="t-cap">Parts of the brain used</p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {product.circuits.map((c) => <li key={c} className="pill pill-gray">{c}</li>)}
             </ul>
           </div>
         </div>
       </header>
 
-      <div className="py-10">
-        {product.status === "live" && product.slug === "baseline-room" ? (
-          <>
-            <Runner />
-            <Findings />
-          </>
-        ) : (
-          <Planned />
-        )}
-      </div>
+      {product.status === "live" && product.slug === "baseline-room" ? (
+        <>
+          <Runner />
+          <Findings />
+        </>
+      ) : (
+        <Planned />
+      )}
 
       {product.references && (
-        <footer className="border-t border-rule pt-8">
-          <p className="plate-label">Checked against</p>
-          <ul className="mt-3 space-y-2">
+        <footer className="mt-12">
+          <p className="t-cap">Checked against</p>
+          <ul className="mt-2 space-y-1.5">
             {product.references.map((r) => (
               <li key={r.href}>
-                <a
-                  href={r.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm text-bone-dim underline decoration-rule underline-offset-4 hover:text-brass"
-                >
-                  {r.label}
-                </a>
+                <a href={r.href} target="_blank" rel="noreferrer" className="t-foot underline decoration-line underline-offset-4 hover:text-label">{r.label}</a>
               </li>
             ))}
           </ul>
@@ -93,36 +68,27 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
 }
 
 const OUTCOME = {
-  holds: { label: "Holds", cls: "border-phosphor/50 text-phosphor" },
-  partial: { label: "Inconclusive", cls: "border-brass/50 text-brass" },
-  fails: { label: "Fails", cls: "border-carmine/60 text-carmine" },
+  holds: { label: "Works", cls: "pill-green" },
+  partial: { label: "Unclear", cls: "pill-orange" },
+  fails: { label: "Fails", cls: "pill-red" },
 } as const;
 
 function Findings() {
   return (
-    <section className="mt-16 border-t border-rule pt-10">
-      <p className="plate-label">Fig. 7 — what happened</p>
-      <h2 className="display mt-3 text-4xl text-bone">Results, including the bad ones</h2>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-bone-dim">
-        Run from the headless harness against the same code this page executes.
-        Two of the four hold, one is inconclusive, and one fails.
-      </p>
-
-      <div className="mt-8 space-y-px">
+    <section className="mt-12">
+      <h2 className="t-title">Results</h2>
+      <p className="t-body mt-2">Two of four tests pass. One is unclear. One fails, and here is why.</p>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {FINDINGS.map((f) => {
           const o = OUTCOME[f.outcome];
           return (
-            <div key={f.assay} className="plate p-6">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <h3 className="display text-2xl text-bone">{f.assay}</h3>
-                <span className={`plate-label border px-2 py-0.5 ${o.cls}`}>{o.label}</span>
+            <div key={f.title} className="glass p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="t-head">{f.title}</h3>
+                <span className={`pill ${o.cls}`}>{o.label}</span>
               </div>
-              <p className="readout mt-3 max-w-3xl text-xs leading-relaxed text-bone-dim">
-                {f.measured}
-              </p>
-              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-bone-faint">
-                {f.reading}
-              </p>
+              <p className="t-foot mt-3">{f.measured}</p>
+              <p className="mt-3 text-[15px]">{f.reading}</p>
             </div>
           );
         })}
@@ -133,25 +99,12 @@ function Findings() {
 
 function Planned() {
   return (
-    <div className="plate p-10">
-      <p className="plate-label">Not built yet</p>
-      <h2 className="display mt-4 text-3xl text-bone">
-        This plate is still a plan.
-      </h2>
-      <p className="mt-4 max-w-xl text-sm leading-relaxed text-bone-dim">
-        The connectome and the simulation engine behind Plate&nbsp;I are already
-        general enough to carry this one. What is missing is the world it needs
-        and the read-out that would make it falsifiable. If you want to build
-        it, the repository is open.
+    <div className="glass p-10">
+      <h2 className="t-title">Not built yet</h2>
+      <p className="t-body mt-3 max-w-xl">
+        The brain and the simulator behind The Room already work. This experiment needs its own world and its own test. The code is open if you want to build it.
       </p>
-      <a
-        href="https://github.com/gfly-site/gfly"
-        target="_blank"
-        rel="noreferrer"
-        className="btn mt-7 inline-block"
-      >
-        Take it on →
-      </a>
+      <a href="https://github.com/gfly-site/gfly" target="_blank" rel="noreferrer" className="btn mt-6 inline-block">Open on GitHub</a>
     </div>
   );
 }

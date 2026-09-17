@@ -33,20 +33,38 @@ single thread, plain JavaScript:
 | 2.7M edges | 1.0 ms | 1.11× real time |
 | 6.2M edges, embodied loop | 1.0 ms | 0.40× real time |
 
+## What is on screen
+
+- **The brain** is the official MaleCNS neuropil shell (`rois/brain-shell-with-lamina-v2.1`
+  and `rois/vnc-shell-v2` from the release bucket, CC-BY 4.0), decimated from
+  3.4M to 60k triangles by `tools/build_brain_mesh.py`. Every dot is one of the
+  139,631 neurons with a reconstructed cell body, at its released soma
+  position, lit by the simulation's own spike train.
+- **The fly** is the [flybody](https://github.com/TuragaLab/flybody) model
+  (Google DeepMind / HHMI Janelia, Apache-2.0). `tools/build_fly_mesh.py` uses
+  MuJoCo's forward kinematics to place its 85 parts, decimates them, and merges
+  them into one 44k-triangle mesh with the model's own material colours.
+- **The eyes** are the ~880 real optic-lobe columns per eye from the release's
+  `assignedOlHex1/2` coordinates, showing scene luminance, lamina input, and
+  the actual firing of each column's L1 and L2 cells.
+- The room, lighting and eye simulation are ours. The live-panel layout takes
+  its cue from [Haltere](https://github.com/skulitom/haltere) (MIT).
+
 ## Structure
 
 ```
 GFly/
 ├─ web/                     Next.js app → Vercel
 │  ├─ src/lib/sim/          connectome loader + LIF kernel (shared)
-│  ├─ src/experiments/      one self-contained module per plate
-│  └─ public/connectome/    the compiled binaries
-├─ tools/                   offline preprocessing
+│  ├─ src/lib/three/        mesh loaders
+│  ├─ src/experiments/      one self-contained module per experiment
+│  └─ public/               connectome/, brain/, fly/ — the compiled binaries
+├─ tools/                   offline preprocessing (connectome, brain shell, fly)
 └─ docs/
 ```
 
-Every use case is a **plate**: its own world, its own worker, its own claim, and
-its own way of being wrong. Shared infrastructure lives in `src/lib/sim`, so a
+Every use case is its own experiment: its own world, its own worker, its own
+claim, and its own way of being wrong. Shared infrastructure lives in `src/lib/sim`, so a
 new plate starts from a working brain. Add an entry to
 `src/experiments/registry.ts` and it appears in the catalogue.
 
@@ -91,7 +109,7 @@ Three corrections were needed before the model produced anything fly-like:
 Together these took the Giant Fibre from permanently silent to a clean
 0 → 75 Hz ramp as a loom expands.
 
-## Results so far — Plate I, The Baseline Room
+## Results so far — 01, The Room
 
 | Assay | Outcome |
 |-------|---------|

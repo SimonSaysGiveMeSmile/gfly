@@ -1,30 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Arena } from "./Arena";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrainView } from "./BrainView";
+import { RoomView } from "./RoomView";
+import { RetinaPanel } from "./RetinaPanel";
+import { FrameBus, type Ready } from "./bus";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
 
-type Ready = Extract<FromWorker, { type: "ready" }>;
 type Progress = { label: string; received: number; total: number };
 
-const ASSAYS: { id: AssayName; name: string; blurb: string }[] = [
-  { id: "optomotor", name: "Optomotor", blurb: "Rotate the surround and see if the fly follows." },
-  { id: "looming", name: "Looming escape", blurb: "Expand a dark object and watch the Giant Fibre." },
-  { id: "wall", name: "Wall following", blurb: "Leave it alone and see where it walks." },
-  { id: "compass", name: "Heading compass", blurb: "Track the bump in the ellipsoid body." },
+const TESTS: { id: AssayName; name: string }[] = [
+  { id: "optomotor", name: "Follow moving stripes" },
+  { id: "looming", name: "Dodge an object" },
+  { id: "wall", name: "Walk along walls" },
+  { id: "compass", name: "Keep a heading" },
 ];
 
 const LESIONS: { id: "t4t5" | "lplc2" | "giantFiber"; label: string }[] = [
-  { id: "t4t5", label: "Cut T4/T5" },
-  { id: "lplc2", label: "Cut LPLC2" },
-  { id: "giantFiber", label: "Cut DNp01" },
+  { id: "t4t5", label: "Silence motion cells" },
+  { id: "lplc2", label: "Silence loom cells" },
+  { id: "giantFiber", label: "Silence Giant Fiber" },
 ];
 
 export function Runner() {
+  const bus = useMemo(() => new FrameBus(), []);
   const workerRef = useRef<Worker | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [ready, setReady] = useState<Ready | null>(null);
-  const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
+  const [slow, setSlow] = useState<Telemetry | null>(null);
   const [running, setRunning] = useState(false);
   const [assay, setAssay] = useState<AssayName | null>(null);
   const [lesion, setLesion] = useState<string | null>(null);
@@ -38,26 +41,30 @@ export function Runner() {
     setStarted(true);
     const w = new Worker(new URL("./worker.ts", import.meta.url));
     workerRef.current = w;
+    let lastSlow = 0;
     w.onmessage = (e: MessageEvent<FromWorker>) => {
       const m = e.data;
       if (m.type === "progress") setProgress({ label: m.label, received: m.received, total: m.total });
-      else if (m.type === "ready") { setReady(m); setProgress(null); }
-      else if (m.type === "telemetry") setTelemetry(m.data);
+      else if (m.type === "ready") { bus.ready = m; setReady(m); setProgress(null); }
+      else if (m.type === "telemetry") {
+        bus.push(m);
+        // React only needs the numbers a few times a second.
+        const now = performance.now();
+        if (now - lastSlow > 250) { lastSlow = now; setSlow(m.data); }
+      }
       else if (m.type === "error") setError(m.message);
     };
     w.postMessage({ type: "load", tier: 5 } satisfies ToWorker);
-  }, []);
+  }, [bus]);
 
   useEffect(() => () => { workerRef.current?.terminate(); workerRef.current = null; }, []);
-
-  // Start stepping as soon as the connectome is in memory.
   useEffect(() => {
     if (ready && !running) { send({ type: "run", running: true }); setRunning(true); }
-     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   const toggleRun = () => { send({ type: "run", running: !running }); setRunning(!running); };
-  const pickAssay = (id: AssayName | null) => { setAssay(id); send({ type: "assay", name: id }); };
+  const pickTest = (id: AssayName | null) => { setAssay(id); send({ type: "assay", name: id }); };
   const toggleLesion = (id: string) => {
     const next = lesion === id ? null : id;
     setLesion(next);
@@ -65,186 +72,124 @@ export function Runner() {
   };
 
   if (!started) return <StartCard onStart={boot} />;
-  if (error) return <Panel title="Error">{error}</Panel>;
+  if (error) return <div className="glass p-8"><p className="t-head text-red">Something went wrong</p><p className="t-foot mt-2">{error}</p></div>;
   if (!ready) return <Loading progress={progress} />;
 
-  const r = telemetry?.rates;
-  const verdict = telemetry?.assay;
+  const r = slow?.rates;
+  const verdict = slow?.assay;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-12">
-      {/* Arena ------------------------------------------------------- */}
-      <div className="lg:col-span-8">
-        <div className="plate p-4">
-          <div className="mb-3 flex items-center justify-between gap-4">
-            <span className="plate-label">Fig. 1 — the room, 1200 × 800 mm</span>
-            <span className="readout text-[0.65rem] text-bone-faint">
-              {telemetry ? `t = ${(telemetry.simMs / 1000).toFixed(1)} s` : "—"}
-            </span>
-          </div>
-          <Arena telemetry={telemetry ?? null} />
+    <div className="space-y-4">
+      {/* Views ------------------------------------------------------- */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        <Card className="lg:col-span-7" title="The room" hint="Drag to look around. The fly is shown about 60× life size.">
+          <RoomView bus={bus} className="glass-inner aspect-[4/3] w-full" />
+        </Card>
+        <Card className="flex flex-col lg:col-span-5" title="The brain" hint="Each dot is a real neuron. It lights up when it fires.">
+          <BrainView bus={bus} className="glass-inner min-h-[360px] w-full flex-1" />
+        </Card>
+      </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button onClick={toggleRun} className="btn-primary">
-              {running ? "Pause" : "Run"}
-            </button>
+      <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
+        <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
+      </Card>
+
+      {/* Controls ---------------------------------------------------- */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        <Card className="lg:col-span-4" title="Controls">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={toggleRun} className="btn-primary">{running ? "Pause" : "Run"}</button>
             <button onClick={() => send({ type: "reset" })} className="btn">Reset</button>
-            <button onClick={() => send({ type: "threat" })} className="btn">
-              Swat at it
-            </button>
-            <div className="ml-auto flex flex-wrap gap-2">
-              {LESIONS.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => toggleLesion(l.id)}
-                  className={lesion === l.id ? "btn-danger" : "btn"}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
+            <button onClick={() => send({ type: "threat" })} className="btn">Swat at it</button>
           </div>
-        </div>
-
-        {/* Assays --------------------------------------------------- */}
-        <div className="plate mt-5 p-5">
-          <span className="plate-label">Fig. 2 — behavioural battery</span>
-          <div className="mt-4 grid gap-2 sm:grid-cols-4">
-            {ASSAYS.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => pickAssay(assay === a.id ? null : a.id)}
-                className={`plate border p-3 text-left transition-colors ${
-                  assay === a.id
-                    ? "border-carmine text-bone"
-                    : "border-rule text-bone-dim hover:border-rule-bright"
-                }`}
-              >
-                <span className="readout text-xs">{a.name}</span>
-                <span className="mt-1.5 block text-[0.7rem] leading-snug text-bone-faint">
-                  {a.blurb}
-                </span>
+          <p className="t-cap mt-5 mb-2">Turn off part of the brain</p>
+          <div className="flex flex-wrap gap-2">
+            {LESIONS.map((l) => (
+              <button key={l.id} onClick={() => toggleLesion(l.id)} className={lesion === l.id ? "btn-danger" : "btn"}>
+                {l.label}
               </button>
             ))}
           </div>
+        </Card>
 
+        <Card className="lg:col-span-5" title="Tests" hint="Pick one. It runs until you pick another.">
+          <div className="grid grid-cols-2 gap-2">
+            {TESTS.map((t) => (
+              <button key={t.id} onClick={() => pickTest(assay === t.id ? null : t.id)} className={assay === t.id ? "btn-on" : "btn"} style={{ textAlign: "left" }}>
+                {t.name}
+              </button>
+            ))}
+          </div>
           {verdict && (
-            <div className="mt-5 border-t border-rule pt-5">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <VerdictChip verdict={verdict.verdict} />
-                <span className="readout text-xs text-bone-dim">{verdict.detail}</span>
-              </div>
-              <p className="mt-3 text-xs leading-relaxed text-bone-faint">
-                <span className="text-brass">Expected · </span>
-                {verdict.expected}
-              </p>
+            <div className="mt-4 border-t border-line pt-4">
+              <Verdict v={verdict.verdict} />
+              <p className="t-foot mt-2">{verdict.detail}</p>
+              <p className="t-cap mt-2">Expected: {verdict.expected}</p>
               <Trace series={verdict.series} labels={verdict.labels} />
             </div>
           )}
-        </div>
-      </div>
+        </Card>
 
-      {/* Instruments -------------------------------------------------- */}
-      <div className="space-y-5 lg:col-span-4">
-        <div className="plate p-5">
-          <span className="plate-label">Fig. 3 — the machine</span>
-          <dl className="mt-4 space-y-2.5">
+        <Card className="lg:col-span-3" title="Numbers">
+          <dl className="space-y-2">
             <Stat k="Neurons" v={ready.neurons.toLocaleString()} />
             <Stat k="Connections" v={ready.edges.toLocaleString()} />
-            <Stat k="Load time" v={`${(ready.loadMs / 1000).toFixed(1)} s`} />
-            <Stat
-              k="Speed"
-              v={telemetry ? `${telemetry.realtime.toFixed(2)}× real time` : "—"}
-              hot={!!telemetry && telemetry.realtime > 0.8}
-            />
-            <Stat k="Mean rate" v={telemetry ? `${telemetry.meanHz.toFixed(2)} Hz` : "—"} />
-            <Stat k="Integrating" v={telemetry ? telemetry.activeSet.toLocaleString() : "—"} />
+            <Stat k="Loaded in" v={`${(ready.loadMs / 1000).toFixed(1)} s`} />
+            <Stat k="Speed" v={slow ? `${slow.realtime.toFixed(2)}× real time` : "—"} hot={!!slow && slow.realtime > 0.8} />
+            <Stat k="Average rate" v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
           </dl>
-        </div>
-
-        <div className="plate p-5">
-          <span className="plate-label">Fig. 4 — population rates</span>
-          <div className="mt-4 space-y-2.5">
-            <Bar label="Descending L" hz={r?.descendingL} max={30} />
-            <Bar label="Descending R" hz={r?.descendingR} max={30} />
-            <Bar label="T4 (motion ON)" hz={r?.t4} max={30} />
-            <Bar label="T5 (motion OFF)" hz={r?.t5} max={30} />
-            <Bar label="LPLC2 L (loom)" hz={r?.lplc2L} max={40} />
-            <Bar label="LPLC2 R (loom)" hz={r?.lplc2R} max={40} />
-            <Bar label="DNp01 Giant Fibre" hz={r?.giantFiber} max={20} accent />
+          <p className="t-cap mt-5 mb-2">Firing, by group</p>
+          <div className="space-y-2">
+            <Bar label="Steering, left" hz={r?.descendingL} max={30} />
+            <Bar label="Steering, right" hz={r?.descendingR} max={30} />
+            <Bar label="Motion cells" hz={r ? (r.t4 + r.t5) / 2 : 0} max={20} />
+            <Bar label="Loom cells" hz={r ? (r.lplc2L + r.lplc2R) / 2 : 0} max={40} />
+            <Bar label="Giant Fiber" hz={r?.giantFiber} max={40} accent />
           </div>
-        </div>
-
-        <div className="plate p-5">
-          <span className="plate-label">Fig. 5 — ellipsoid body</span>
-          <p className="mt-2 text-xs leading-relaxed text-bone-faint">
-            Forty-six EPG cells arranged as a ring. A single bump here is the
-            fly&rsquo;s sense of which way it is pointing.
-          </p>
-          <Bump values={telemetry?.epgBump ?? []} heading={telemetry?.fly.heading ?? 0} />
-        </div>
-
-        <div className="plate p-5">
-          <span className="plate-label">Fig. 6 — wired populations</span>
-          <dl className="mt-4 space-y-2">
-            {Object.entries(ready.populations).map(([k, v]) => (
-              <Stat key={k} k={k} v={v.toLocaleString()} />
-            ))}
-          </dl>
-        </div>
+        </Card>
       </div>
     </div>
   );
 }
 
-/* ---- small parts -------------------------------------------------- */
+/* ---- parts ------------------------------------------------------------ */
+
+function Card({ title, hint, className, children }: { title: string; hint?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <section className={`glass p-4 ${className ?? ""}`}>
+      <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+        <h3 className="t-head">{title}</h3>
+        {hint && <p className="t-cap hidden text-right sm:block">{hint}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function StartCard({ onStart }: { onStart: () => void }) {
   return (
-    <div className="plate p-10 text-center">
-      <p className="plate-label">Ready when you are</p>
-      <h3 className="display mt-4 text-4xl text-bone">
-        21.7 MB, then no server ever again
-      </h3>
-      <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-bone-dim">
-        Starting the experiment downloads the whole connectome into this tab:
-        163,997 neurons and 6,236,426 connections. Everything after that runs
-        on your own machine.
+    <div className="glass p-10 text-center">
+      <h3 className="t-title">Load the brain</h3>
+      <p className="t-body mx-auto mt-3 max-w-md">
+        This downloads 25 MB once: the connectome, the brain shape and the fly. After that everything runs on your device.
       </p>
-      <button onClick={onStart} className="btn-primary mt-7">
-        Load the brain
-      </button>
+      <button onClick={onStart} className="btn-primary mt-6">Load</button>
     </div>
   );
 }
 
 function Loading({ progress }: { progress: Progress | null }) {
-  const pct = progress && progress.total
-    ? Math.round((progress.received / progress.total) * 100)
-    : 0;
+  const pct = progress && progress.total ? Math.round((progress.received / progress.total) * 100) : 0;
+  const label = progress?.label === "connectome" ? "Loading connections" : progress?.label === "neurons" ? "Loading neurons" : "Starting";
   return (
-    <div className="plate p-10">
-      <p className="plate-label">Loading · {progress?.label ?? "starting"}</p>
-      <div className="mt-5 h-px w-full bg-rule">
-        <div
-          className="h-px bg-carmine transition-[width] duration-200"
-          style={{ width: `${pct}%` }}
-        />
+    <div className="glass p-10">
+      <p className="t-head">{label}…</p>
+      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-blue transition-[width] duration-200" style={{ width: `${pct}%` }} />
       </div>
-      <p className="readout mt-3 text-xs text-bone-faint">
-        {progress && progress.total
-          ? `${(progress.received / 1e6).toFixed(1)} / ${(progress.total / 1e6).toFixed(1)} MB`
-          : "contacting static assets"}
+      <p className="t-foot num mt-2">
+        {progress && progress.total ? `${(progress.received / 1e6).toFixed(1)} of ${(progress.total / 1e6).toFixed(1)} MB` : ""}
       </p>
-    </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="plate p-8">
-      <p className="plate-label">{title}</p>
-      <p className="readout mt-3 text-sm text-carmine">{children}</p>
     </div>
   );
 }
@@ -252,91 +197,51 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 function Stat({ k, v, hot }: { k: string; v: string; hot?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-xs text-bone-faint">{k}</dt>
-      <dd className={`readout text-sm ${hot ? "text-phosphor" : "text-bone"}`}>{v}</dd>
+      <dt className="t-foot">{k}</dt>
+      <dd className={`num text-[15px] font-semibold ${hot ? "text-green" : ""}`}>{v}</dd>
     </div>
   );
 }
 
 function Bar({ label, hz, max, accent }: { label: string; hz?: number; max: number; accent?: boolean }) {
   const v = hz ?? 0;
-  const pct = Math.min(100, (v / max) * 100);
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[0.7rem] text-bone-faint">{label}</span>
-        <span className="readout text-[0.7rem] text-bone-dim">{v.toFixed(1)} Hz</span>
+        <span className="t-foot">{label}</span>
+        <span className="num t-foot">{v.toFixed(1)} Hz</span>
       </div>
-      <div className="mt-1 h-1.5 w-full bg-ink">
-        <div
-          className={`h-1.5 transition-[width] duration-100 ${accent ? "bg-carmine" : "bg-phosphor"}`}
-          style={{ width: `${pct}%` }}
-        />
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className={`h-full rounded-full transition-[width] duration-150 ${accent ? "bg-red" : "bg-green"}`} style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
       </div>
     </div>
   );
 }
 
-function VerdictChip({ verdict }: { verdict: "running" | "pass" | "fail" }) {
-  const map = {
-    running: ["Collecting", "border-rule text-bone-faint"],
-    pass: ["Matches the animal", "border-phosphor/50 text-phosphor"],
-    fail: ["Does not match", "border-carmine/60 text-carmine"],
-  } as const;
-  const [label, cls] = map[verdict];
-  return <span className={`plate-label border px-2 py-1 ${cls}`}>{label}</span>;
+function Verdict({ v }: { v: "running" | "pass" | "fail" }) {
+  if (v === "pass") return <span className="pill pill-green">Behaves like a fly</span>;
+  if (v === "fail") return <span className="pill pill-red">Does not</span>;
+  return <span className="pill pill-gray"><span className="live-dot" />Measuring</span>;
 }
 
 function Trace({ series, labels }: { series: { t: number; a: number; b: number }[]; labels: [string, string] }) {
   if (series.length < 2) return null;
-  const w = 520, h = 90;
-  const xs = series.map((s) => s.t);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const all = series.flatMap((s) => [s.a, s.b]);
-  const y0 = Math.min(...all), y1 = Math.max(...all);
+  const w = 520, h = 80;
+  const xs = series.map((s) => s.t), all = series.flatMap((s) => [s.a, s.b]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...all), y1 = Math.max(...all);
   const px = (t: number) => ((t - x0) / Math.max(1e-6, x1 - x0)) * w;
-  const py = (v: number) => h - ((v - y0) / Math.max(1e-6, y1 - y0)) * h;
-  const path = (key: "a" | "b") =>
-    series.map((s, i) => `${i ? "L" : "M"}${px(s.t).toFixed(1)},${py(s[key]).toFixed(1)}`).join("");
-
+  const py = (v: number) => h - ((v - y0) / Math.max(1e-6, y1 - y0)) * (h - 4) - 2;
+  const path = (k: "a" | "b") => series.map((s, i) => `${i ? "L" : "M"}${px(s.t).toFixed(1)},${py(s[k]).toFixed(1)}`).join("");
   return (
-    <figure className="mt-4">
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="assay trace">
-        <path d={path("a")} fill="none" stroke="#c9a94e" strokeWidth="1.5" />
-        <path d={path("b")} fill="none" stroke="#63e0b4" strokeWidth="1.5" />
+    <figure className="mt-3">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="test trace">
+        <path d={path("a")} fill="none" stroke="#ff9f0a" strokeWidth="1.6" />
+        <path d={path("b")} fill="none" stroke="#30d158" strokeWidth="1.6" />
       </svg>
-      <figcaption className="readout mt-2 flex gap-5 text-[0.65rem] text-bone-faint">
-        <span><i className="mr-1.5 inline-block h-px w-3 bg-brass align-middle" />{labels[0]}</span>
-        <span><i className="mr-1.5 inline-block h-px w-3 bg-phosphor align-middle" />{labels[1]}</span>
+      <figcaption className="t-cap mt-1 flex gap-4">
+        <span><i className="mr-1.5 inline-block h-0.5 w-3 bg-orange align-middle" />{labels[0]}</span>
+        <span><i className="mr-1.5 inline-block h-0.5 w-3 bg-green align-middle" />{labels[1]}</span>
       </figcaption>
     </figure>
-  );
-}
-
-function Bump({ values, heading }: { values: number[]; heading: number }) {
-  const R = 52, C = 68;
-  return (
-    <svg viewBox="0 0 136 136" className="mx-auto mt-4 w-40" role="img" aria-label="EPG activity ring">
-      <circle cx={C} cy={C} r={R} fill="none" stroke="#2c3326" strokeWidth="1" />
-      {values.map((v, i) => {
-        const a = (i / Math.max(1, values.length)) * Math.PI * 2 - Math.PI / 2;
-        const r1 = R - 12, r2 = R - 12 + v * 20;
-        return (
-          <line
-            key={i}
-            x1={C + Math.cos(a) * r1} y1={C + Math.sin(a) * r1}
-            x2={C + Math.cos(a) * r2} y2={C + Math.sin(a) * r2}
-            stroke="#63e0b4" strokeWidth="2.5" opacity={0.25 + v * 0.75}
-          />
-        );
-      })}
-      <line
-        x1={C} y1={C}
-        x2={C + Math.cos(heading - Math.PI / 2) * (R - 16)}
-        y2={C + Math.sin(heading - Math.PI / 2) * (R - 16)}
-        stroke="#d8402c" strokeWidth="1.5"
-      />
-      <circle cx={C} cy={C} r="2" fill="#d8402c" />
-    </svg>
   );
 }

@@ -47,6 +47,13 @@ export interface AssayReport {
   labels: [string, string];
 }
 
+/**
+ * Per-column retina channels, one byte each, laid out [lum, drive, l1, l2]
+ * per column. `lum` is scene luminance, `drive` the lamina input, `l1`/`l2`
+ * how recently that column's L1 and L2 cells actually fired.
+ */
+export const RETINA_CH = 4;
+
 export type FromWorker =
   | { type: "progress"; label: string; received: number; total: number }
   | {
@@ -55,6 +62,20 @@ export type FromWorker =
       columnsL: number; columnsR: number;
       populations: Record<string, number>;
       loadMs: number;
+      /** Column plane positions, u,v interleaved, per eye. */
+      retinaLayoutL: Float32Array;
+      retinaLayoutR: Float32Array;
+      /** Soma positions in 8 nm voxels, xyz interleaved, for neurons that have one. */
+      somaXYZ: Float32Array;
+      /** Neuron index for each soma, so activity can be looked up per point. */
+      somaNeuron: Uint32Array;
     }
-  | { type: "telemetry"; data: Telemetry }
+  | {
+      type: "telemetry";
+      data: Telemetry;
+      /** One byte per neuron: how recently it fired, 255 = this instant. */
+      activity: Uint8Array;
+      retinaL: Uint8Array;
+      retinaR: Uint8Array;
+    }
   | { type: "error"; message: string };
