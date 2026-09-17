@@ -95,7 +95,7 @@ Together these took the Giant Fibre from permanently silent to a clean
 
 | Assay | Outcome |
 |-------|---------|
-| Looming escape | **Holds.** Silent at rest; 0 → 75 Hz under an expanding object, crossing threshold ~660 ms before contact. |
+| Looming escape | **Holds.** Silent at rest; 0 → 75 Hz under an expanding object, crossing threshold ~660 ms before contact. Fired on 7/7 consecutive looms in-browser. |
 | ON/OFF pathway split | **Holds.** Darkness drives Mi1 3.3 → 0.0 Hz and Tm1/Tm2 1.7 → 9.2 Hz. |
 | Wall following | **Inconclusive.** Stays 12–21 mm from surfaces, but explores too little to separate preference from low mobility. |
 | Optomotor response | **Fails.** Does not reverse turning when the drum reverses. The steering read-out — left/right asymmetry across all 1,304 descending neurons — is almost certainly too crude. |

@@ -60,6 +60,23 @@ let tag: Uint8Array | null = null;
 const T_DNL = 1, T_DNR = 2, T_GF = 4, T_T4 = 8, T_T5 = 16, T_LPL = 32, T_LPR = 64, T_EPG = 128;
 
 const counts = { dnL: 0, dnR: 0, gf: 0, t4: 0, t5: 0, lplL: 0, lplR: 0, epg: 0 };
+/**
+ * Rates carried across counting windows. Reading the raw counter straight
+ * after it is zeroed reports 0 Hz for a population that is firing perfectly
+ * well, so the display would spend half its frames showing nothing.
+ */
+const smooth = { dnL: 0, dnR: 0, gf: 0, t4: 0, t5: 0, lplL: 0, lplR: 0, epg: 0 };
+type RateKey = keyof typeof counts;
+const POP_SIZE: Record<RateKey, () => number> = {
+  dnL: () => circuits?.descendingL.length ?? 1,
+  dnR: () => circuits?.descendingR.length ?? 1,
+  gf: () => circuits?.giantFiber.length ?? 1,
+  t4: () => circuits?.t4.length ?? 1,
+  t5: () => circuits?.t5.length ?? 1,
+  lplL: () => circuits?.lplc2.left.length ?? 1,
+  lplR: () => circuits?.lplc2.right.length ?? 1,
+  epg: () => circuits?.epg.length ?? 1,
+};
 let epgCounts: Float32Array = new Float32Array(0);
 let epgIndex = new Map<number, number>();
 
@@ -68,6 +85,9 @@ let sinceSensor = 0;
 let sinceRate = 0;
 let assay: AssayReport | null = null;
 let assayClock = 0;
+// Looming assay is scored per trial rather than per instant.
+let loomTrials = 0, loomHits = 0;
+let loomHit = false, loomArmed = false;
 
 // Per-column luminance memory, for the ON/OFF contrast channels.
 let adaptL: Float32Array = new Float32Array(0);
@@ -158,10 +178,11 @@ function doReset() {
   world = makeWorld();
   simMs = 0; sinceSensor = 0; sinceRate = 0;
   epgCounts.fill(0);
-  for (const k of Object.keys(counts) as (keyof typeof counts)[]) counts[k] = 0;
+  for (const k of Object.keys(counts) as RateKey[]) { counts[k] = 0; smooth[k] = 0; }
   adaptL.fill(0.5); adaptR.fill(0.5);
   settle();
   assay = null; assayClock = 0;
+  loomTrials = 0; loomHits = 0; loomHit = false; loomArmed = false;
 }
 
 function startAssay(name: AssayName | null) {
@@ -178,6 +199,7 @@ function startAssay(name: AssayName | null) {
     assay = { ...base, labels: ["loom size (rad)", "Giant Fibre (Hz)"],
       expected: "LPLC2 should drive DNp01 only as the loom nears contact, producing a short burst rather than a sustained response.",
       detail: "Launching an expanding dark object and watching the Giant Fibre." };
+    loomTrials = 0; loomHits = 0; loomHit = false; loomArmed = true;
     launchThreat(world, world.fly.heading + 0.2);
   } else if (name === "wall") {
     assay = { ...base, labels: ["distance to wall (mm)", "mean (mm)"],
@@ -329,7 +351,10 @@ function sensorTick() {
 function updateAssay(hzL: number, hzR: number) {
   if (!assay || !circuits) return;
   const f = world.fly;
-  const gfHz = counts.gf / Math.max(1, circuits.giantFiber.length) / (RATE_WINDOW / 1000);
+  const gfHz = Math.max(
+    smooth.gf,
+    counts.gf / Math.max(1, circuits.giantFiber.length) / (RATE_WINDOW / 1000),
+  );
 
   if (assay.name === "optomotor") {
     assay.series.push({ t: assayClock, a: world.drumSpeed, b: f.turn });
@@ -347,13 +372,35 @@ function updateAssay(hzL: number, hzR: number) {
   } else if (assay.name === "looming") {
     assay.series.push({ t: assayClock, a: world.threat.size, b: gfHz });
     if (assay.series.length > 240) assay.series.shift();
-    const fired = assay.series.some((s) => s.b > 0.5);
-    if (assayClock > 3) {
-      assay.verdict = fired ? "pass" : "fail";
-      assay.detail = fired
-        ? "The Giant Fibre fired as the loom expanded, and the body committed to an escape."
-        : "The loom expanded to contact without the Giant Fibre firing.";
-      if (assayClock > 4.5) { launchThreat(world); assayClock = 0; assay.series = []; }
+
+    // Score each loom as its own trial. The Giant Fibre fires for a few hundred
+    // milliseconds out of a loom lasting well over a second, so asking whether
+    // it is firing right now, or looking at a rolling window that has already
+    // discarded the burst, reports a miss on a trial that plainly hit.
+    if (gfHz > 0.5) loomHit = true;
+
+    if (!world.threat.active && loomArmed) {
+      loomArmed = false;
+      loomTrials++;
+      if (loomHit) loomHits++;
+      loomHit = false;
+    }
+
+    if (loomTrials > 0) {
+      assay.verdict = loomHits / loomTrials >= 0.5 ? "pass" : "fail";
+      assay.detail =
+        `Giant Fibre fired on ${loomHits} of ${loomTrials} looms` +
+        (loomHits
+          ? `, peaking mid-expansion and committing the body to an escape.`
+          : `. The object reached contact without an escape being triggered.`);
+    }
+
+    // Relaunch, always somewhere the eyes can actually see.
+    if (!world.threat.active && assayClock > 1.2) {
+      launchThreat(world, world.fly.heading + (Math.random() - 0.5) * 1.0);
+      loomArmed = true;
+      loomHit = false;
+      assayClock = 0;
     }
   } else if (assay.name === "wall") {
     const d = distanceToWall(world);
@@ -447,7 +494,11 @@ function loop() {
     }
     if (sinceRate >= RATE_WINDOW) {
       sinceRate = 0;
-      for (const k of Object.keys(counts) as (keyof typeof counts)[]) counts[k] = 0;
+      for (const k of Object.keys(counts) as RateKey[]) {
+        const hz = counts[k] / Math.max(1, POP_SIZE[k]()) / (RATE_WINDOW / 1000);
+        smooth[k] = smooth[k] * 0.6 + hz * 0.4;
+        counts[k] = 0;
+      }
       for (let i = 0; i < epgCounts.length; i++) epgCounts[i] *= 0.55;
     }
   }
@@ -468,8 +519,6 @@ function loop() {
 
 function sendTelemetry() {
   if (!sim || !circuits) return;
-  const win = RATE_WINDOW / 1000;
-  const rate = (c: number, n: number) => c / Math.max(1, n) / win;
   const f = world.fly;
 
   const trail: number[] = [];
@@ -485,14 +534,9 @@ function sendTelemetry() {
     threat: { active: world.threat.active, size: world.threat.size, bearing: world.threat.bearing },
     trail,
     rates: {
-      descendingL: rate(counts.dnL, circuits.descendingL.length),
-      descendingR: rate(counts.dnR, circuits.descendingR.length),
-      giantFiber: rate(counts.gf, circuits.giantFiber.length),
-      t4: rate(counts.t4, circuits.t4.length),
-      t5: rate(counts.t5, circuits.t5.length),
-      lplc2L: rate(counts.lplL, circuits.lplc2.left.length),
-      lplc2R: rate(counts.lplR, circuits.lplc2.right.length),
-      epg: rate(counts.epg, circuits.epg.length),
+      descendingL: smooth.dnL, descendingR: smooth.dnR,
+      giantFiber: smooth.gf, t4: smooth.t4, t5: smooth.t5,
+      lplc2L: smooth.lplL, lplc2R: smooth.lplR, epg: smooth.epg,
     },
     epgBump: Array.from(epgCounts, (c) => c / peak),
     assay,

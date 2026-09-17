@@ -18,7 +18,7 @@ export const FINDINGS: Finding[] = [
     assay: "Looming escape",
     outcome: "holds",
     measured:
-      "The Giant Fibre is silent with no threat present. Under an expanding dark object it rises 0 → 2.5 → 5 → 32 → 75 Hz as the object grows, first crossing threshold about 660 ms before contact, and the body commits to an escape.",
+      "The Giant Fibre is silent with no threat present (0.0-0.1 Hz). Under an expanding dark object it rises 0 → 2.5 → 5 → 32 → 75 Hz as the object grows, first crossing threshold about 660 ms before contact. Run live in a browser, it fired on 7 of 7 consecutive looms and the body committed to an escape each time.",
     reading:
       "The LPLC2 → DNp01 escape pathway works, and it is stimulus-specific rather than simply excitable. This is the clearest success in the battery.",
   },
