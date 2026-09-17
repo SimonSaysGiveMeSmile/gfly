@@ -100,6 +100,9 @@ let adaptR: Float32Array = new Float32Array(0);
 let lastSpike: Float32Array = new Float32Array(0);
 /** How fast a spike fades on screen, ms. */
 const GLOW_TAU = 70;
+/** exp(-age / GLOW_TAU) scaled to a byte, one entry per ms of age. */
+const GLOW_LUT = new Uint8Array(GLOW_TAU * 5 + 1);
+for (let a = 0; a < GLOW_LUT.length; a++) GLOW_LUT[a] = (255 * Math.exp(-a / GLOW_TAU)) | 0;
 
 // Last sensory frame per column, kept so the retina panels can show what the
 // eye saw alongside what the lamina did with it.
@@ -111,7 +114,15 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
   try {
     switch (msg.type) {
       case "load": await load(msg.tier); break;
-      case "run": running = msg.running; if (running) loop(); break;
+      case "run":
+        running = msg.running;
+        if (running) {
+          rtWindowStart = performance.now();
+          rtSimStart = simMs;
+          lastTurnEnd = 0;
+          loop();
+        }
+        break;
       case "reset": doReset(); break;
       case "assay": startAssay(msg.name); break;
       case "threat": launchThreat(world); break;
@@ -484,24 +495,46 @@ function bumpPosition(): number {
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
+// Wall-time accounting, so a slow simulation can be blamed on the right thing.
+const prof = { step: 0, noise: 0, sensor: 0, telemetry: 0, gap: 0, turns: 0 };
+let profSnapshot = { ...prof };
+let profStart = 0;
+let lastTurnEnd = 0;
+
 let lastPost = 0;
 let rtWindowStart = 0;
 let rtSimStart = 0;
-let realtime = 0;
+/** Simulated time over wall time; -1 until the first full measurement window. */
+let realtime = -1;
 let spikeAccum = 0;
+
+// Yielding through a MessageChannel instead of setTimeout(fn, 0). Browsers
+// clamp nested zero-delay timers - in Chrome the worker was idle for two
+// thirds of every second waiting on them - but a posted message is delivered
+// as soon as the queue is free, and it still lets messages from the page
+// (pause, reset, a new test) get through between turns.
+const yieldChannel = new MessageChannel();
+yieldChannel.port1.onmessage = () => loop();
+const yieldToQueue = () => yieldChannel.port2.postMessage(null);
 
 function loop() {
   if (!running || !sim || !circuits) return;
 
   const budgetStart = performance.now();
+  if (lastTurnEnd) prof.gap += budgetStart - lastTurnEnd;
+  prof.turns++;
   // Spend at most 12 ms of wall clock per turn so the worker stays responsive
   // to messages even when the brain is running slower than real time.
   while (performance.now() - budgetStart < 12) {
     // Background drive, so the baseline is irregular rather than clockwork.
+    const tn = performance.now();
     for (let b = 0; b < NOISE_N; b++) {
       sim.injectOne((Math.random() * sim.n) | 0, NOISE_MV);
     }
+    const ts = performance.now();
+    prof.noise += ts - tn;
     const fired = sim.step(DT);
+    prof.step += performance.now() - ts;
     spikeAccum += fired;
 
     for (let k = 0; k < fired; k++) lastSpike[sim.spikes[k]] = simMs;
@@ -532,7 +565,9 @@ function loop() {
 
     if (sinceSensor >= SENSOR_PERIOD) {
       sinceSensor = 0;
+      const t = performance.now();
       sensorTick();
+      prof.sensor += performance.now() - t;
     }
     if (sinceRate >= RATE_WINDOW) {
       sinceRate = 0;
@@ -551,12 +586,22 @@ function loop() {
     rtWindowStart = now; rtSimStart = simMs;
   }
 
-  if (now - lastPost > 33) {
-    lastPost = now;
-    sendTelemetry();
+  if (now - profStart >= 1000) {
+    const scale = 1000 / (now - profStart);
+    profSnapshot = { step: prof.step * scale, noise: prof.noise * scale, sensor: prof.sensor * scale, telemetry: prof.telemetry * scale, gap: prof.gap * scale, turns: prof.turns * scale };
+    for (const k of Object.keys(prof) as (keyof typeof prof)[]) prof[k] = 0;
+    profStart = now;
   }
 
-  setTimeout(loop, 0);
+  if (now - lastPost > 33) {
+    lastPost = now;
+    const t = performance.now();
+    sendTelemetry();
+    prof.telemetry += performance.now() - t;
+  }
+
+  lastTurnEnd = performance.now();
+  yieldToQueue();
 }
 
 function sendTelemetry() {
@@ -582,20 +627,22 @@ function sendTelemetry() {
     },
     epgBump: Array.from(epgCounts, (c) => c / peak),
     assay,
+    prof: profSnapshot,
   };
   // Glow per neuron from its last spike, and per-column L1/L2 firing for the
   // retina panels. Both are fresh buffers so they can be handed over
   // zero-copy rather than cloned.
   const activity = new Uint8Array(sim.n);
   const now = simMs;
+  const maxAge = GLOW_LUT.length - 1;
   for (let i = 0; i < sim.n; i++) {
     const age = now - lastSpike[i];
-    activity[i] = age < GLOW_TAU * 5 ? (255 * Math.exp(-age / GLOW_TAU)) | 0 : 0;
+    activity[i] = age < maxAge ? GLOW_LUT[age | 0] : 0;
   }
   const glow = (idx: number[]) => {
     let best = 1e9;
     for (const n of idx) { const a = now - lastSpike[n]; if (a < best) best = a; }
-    return best < GLOW_TAU * 5 ? (255 * Math.exp(-best / GLOW_TAU)) | 0 : 0;
+    return best < maxAge ? GLOW_LUT[best | 0] : 0;
   };
   const packRetina = (src: Uint8Array, cols: CircuitMap["retinaL"]["columns"]) => {
     const out = new Uint8Array(src.length);

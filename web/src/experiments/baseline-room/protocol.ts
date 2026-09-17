@@ -33,6 +33,8 @@ export interface Telemetry {
   epgBump: number[];
   /** Rolling record for the assay currently running. */
   assay: AssayReport | null;
+  /** Where the worker's wall time went over the last window, ms per second. */
+  prof: { step: number; noise: number; sensor: number; telemetry: number; gap: number; turns: number };
 }
 
 export interface AssayReport {

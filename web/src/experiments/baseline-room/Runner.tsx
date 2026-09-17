@@ -48,6 +48,10 @@ export function Runner() {
       else if (m.type === "ready") { bus.ready = m; setReady(m); setProgress(null); }
       else if (m.type === "telemetry") {
         bus.push(m);
+        // A small read-only hook so the page can be checked from outside
+        // (automated tests, or a curious person in the console).
+        const w = window as unknown as { __gfly?: Record<string, unknown> };
+        w.__gfly = { simMs: m.data.simMs, realtime: m.data.realtime, meanHz: m.data.meanHz, frames: ((w.__gfly?.frames as number) ?? 0) + 1, fly: m.data.fly, assay: m.data.assay?.verdict ?? null, prof: m.data.prof };
         // React only needs the numbers a few times a second.
         const now = performance.now();
         if (now - lastSlow > 250) { lastSlow = now; setSlow(m.data); }
@@ -135,7 +139,7 @@ export function Runner() {
             <Stat k="Neurons" v={ready.neurons.toLocaleString()} />
             <Stat k="Connections" v={ready.edges.toLocaleString()} />
             <Stat k="Loaded in" v={`${(ready.loadMs / 1000).toFixed(1)} s`} />
-            <Stat k="Speed" v={slow ? `${slow.realtime.toFixed(2)}× real time` : "—"} hot={!!slow && slow.realtime > 0.8} />
+            <Stat k="Speed" v={slow && slow.realtime >= 0 ? `${slow.realtime.toFixed(2)}× real time` : "measuring…"} hot={!!slow && slow.realtime > 0.8} />
             <Stat k="Average rate" v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
           </dl>
           <p className="t-cap mt-5 mb-2">Firing, by group</p>

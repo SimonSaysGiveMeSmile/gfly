@@ -34,11 +34,16 @@ export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: str
     if (!ctx) return;
 
     let latest: { l: Uint8Array; r: Uint8Array } | null = null;
-    const off = bus.on((f) => { latest = { l: f.retinaL, r: f.retinaR }; });
+    let dirty = true;
+    const off = bus.on((f) => { latest = { l: f.retinaL, r: f.retinaR }; dirty = true; });
 
     let raf = 0;
     const draw = () => {
       raf = requestAnimationFrame(draw);
+      // Frames arrive at ~30 Hz; redrawing 7,000 columns faster than that is
+      // wasted main-thread time the 3D views need.
+      if (!dirty) return;
+      dirty = false;
       const r = bus.ready;
       const dpr = window.devicePixelRatio || 1;
       const cw = canvas.clientWidth;
@@ -48,6 +53,7 @@ export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: str
       if (canvas.width !== cw * dpr || canvas.height !== Math.round(ch * dpr)) {
         canvas.width = cw * dpr; canvas.height = Math.round(ch * dpr);
         canvas.style.height = `${ch}px`;
+        dirty = true;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
@@ -74,13 +80,15 @@ export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: str
             const x = x0 + ((u + 1) / 2) * w;
             const y = y0 + 4 + ((1 - v) / 2) * h;
             ctx.fillStyle = color(CHANNELS[c].ch, data[i * RETINA_CH + CHANNELS[c].ch]);
-            ctx.beginPath(); ctx.arc(x, y, dot, 0, Math.PI * 2); ctx.fill();
+            ctx.fillRect(x - dot, y - dot, dot * 2, dot * 2);
           }
         }
       }
     };
+    const ro = new ResizeObserver(() => { dirty = true; });
+    ro.observe(canvas);
     raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); off(); };
+    return () => { cancelAnimationFrame(raf); off(); ro.disconnect(); };
   }, [bus]);
 
   return <canvas ref={ref} className={className} style={{ width: "100%", display: "block" }} />;
