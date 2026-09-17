@@ -39,7 +39,7 @@ export default function About() {
       <div className="mt-10 flex flex-wrap gap-3">
         <a href="https://male-cns.janelia.org/" target="_blank" rel="noreferrer" className="btn">The dataset</a>
         <a href="https://github.com/TuragaLab/flybody" target="_blank" rel="noreferrer" className="btn">flybody</a>
-        <a href="https://github.com/gfly-site/gfly" target="_blank" rel="noreferrer" className="btn">GitHub</a>
+        <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn">GitHub</a>
       </div>
     </article>
   );

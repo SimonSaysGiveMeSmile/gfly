@@ -17,7 +17,7 @@ export function SiteHeader() {
               {n.label}
             </Link>
           ))}
-          <a href="https://github.com/gfly-site/gfly" target="_blank" rel="noreferrer" className="btn">
+          <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn">
             GitHub
           </a>
         </nav>

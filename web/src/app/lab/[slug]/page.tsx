@@ -104,7 +104,7 @@ function Planned() {
       <p className="t-body mt-3 max-w-xl">
         The brain and the simulator behind The Room already work. This experiment needs its own world and its own test. The code is open if you want to build it.
       </p>
-      <a href="https://github.com/gfly-site/gfly" target="_blank" rel="noreferrer" className="btn mt-6 inline-block">Open on GitHub</a>
+      <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn mt-6 inline-block">Open on GitHub</a>
     </div>
   );
 }
