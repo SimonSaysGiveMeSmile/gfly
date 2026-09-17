@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+/*
+ * GFly design language: a Victorian entomological plate wired into a modern
+ * instrument panel. Specimen-jar darkness, parchment type, the carmine of a
+ * wild-type Drosophila eye, brass pin gold, and oscilloscope phosphor for
+ * anything that is actually alive on screen.
+ */
+
+@theme {
+  --color-ink: #0c0e0a;
+  --color-ink-2: #12150f;
+  --color-plate: #171b14;
+  --color-plate-2: #1e2319;
+  --color-rule: #2c3326;
+  --color-rule-bright: #46503c;
+
+  --color-bone: #e9e4d4;
+  --color-bone-dim: #b6b2a2;
+  --color-bone-faint: #7d7a6d;
+
+  --color-carmine: #d8402c;
+  --color-carmine-dim: #8e2a1d;
+  --color-brass: #c9a94e;
+  --color-phosphor: #63e0b4;
+  --color-cornflower: #7fa5e8;
+
+  --font-display: var(--font-bodoni), "Bodoni Moda", Didot, serif;
+  --font-body: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-ink);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-body);
+  font-feature-settings: "ss01", "cv05";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Paper grain. Fixed so it reads as the surface the page is printed on,
+   not as something scrolling past. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--color-carmine);
+  color: var(--color-ink);
+}
+
+/* ---- Typography ------------------------------------------------------- */
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+}
+
+.plate-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-bone-faint);
+}
+
+.readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ---- Plate: the framed panel everything lives in ---------------------- */
+
+.plate {
+  position: relative;
+  background: var(--color-plate);
+  border: 1px solid var(--color-rule);
+}
+
+/* Engraved corner ticks, like registration marks on a printing plate. */
+.plate::before,
+.plate::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: var(--color-rule-bright);
+  pointer-events: none;
+}
+.plate::before {
+  top: -1px; left: -1px;
+  border-top: 1px solid; border-left: 1px solid;
+  box-shadow: inset 1px 1px 0 var(--color-rule-bright);
+}
+.plate::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 1px solid; border-right: 1px solid;
+}
+
+.hairline {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--color-rule-bright),
+    var(--color-rule) 40%,
+    transparent
+  );
+}
+
+/* ---- Motion ----------------------------------------------------------- */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.rise {
+  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.live-dot {
+  animation: pulse-live 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .live-dot { animation: none; }
+}
+
+/* ---- Scrollbars ------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule-bright) transparent;
+}
+
+/* ---- Controls ---------------------------------------------------------- */
+
+.btn,
+.btn-primary,
+.btn-danger {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--color-rule);
+  color: var(--color-bone-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s, background-color 0.18s;
+}
+
+.btn:hover {
+  color: var(--color-bone);
+  border-color: var(--color-rule-bright);
+}
+
+.btn-primary {
+  border-color: var(--color-carmine);
+  background: var(--color-carmine);
+  color: var(--color-ink);
+}
+.btn-primary:hover {
+  background: transparent;
+  color: var(--color-carmine);
+}
+
+.btn-danger {
+  border-color: var(--color-carmine);
+  color: var(--color-carmine);
+}
+
+.btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-danger:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
