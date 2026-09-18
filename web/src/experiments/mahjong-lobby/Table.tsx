@@ -167,7 +167,7 @@ export function Table() {
 
   return (
     <div className="space-y-2">
-      <div className="relative w-full h-[62vh] lg:h-[min(calc(100vh-24.5rem),58vw)]">
+      <div className="relative w-full h-[62vh] lg:h-[max(30rem,calc(100vh-14.5rem))]">
         <MahjongView store={store} me={ME} view={view} body={bodyKind} onPick={pick} onHover={setHover} className="glass-inner h-full w-full" />
 
         {/* Top strip: round, wall, scores. */}

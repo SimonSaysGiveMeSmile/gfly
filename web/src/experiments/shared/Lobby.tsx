@@ -29,5 +29,5 @@ export function Lobby({ title, body, action, onStart, children }: {
 }
 
 /** The table's frame: same height rules as the mahjong room so every game feels like one place. */
-export const TABLE_FRAME = "relative w-full h-[62vh] lg:h-[min(calc(100vh-24.5rem),58vw)]";
+export const TABLE_FRAME = "relative w-full h-[62vh] lg:h-[max(30rem,calc(100vh-14.5rem))]";
 export const NAMES = ["You", "Otto", "Mira", "Kip"];
