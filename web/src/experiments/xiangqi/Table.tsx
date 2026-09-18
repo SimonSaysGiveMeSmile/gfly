@@ -17,7 +17,7 @@ import { useBodyKind } from "@/lib/sim/body";
 import { FlyBrains, type BrainsApi, TABLE_SEATS } from "../shared/FlyBrains";
 import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
 import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
-import { FLAT, dot, ease, imageTexture, pickPlane, ring } from "../shared/tableAssets";
+import { dot, ease, imageTexture, pickPlane, ring } from "../shared/tableAssets";
 import { dict } from "./dict";
 import { applyMove, createGame, generateLegalMoves, isInCheck, moveToString, type Color, type GameState, type Move, type PieceKind, type Position } from "./engine";
 import { getBestMoves } from "./bot";
@@ -50,6 +50,11 @@ class Store {
 
 /** World position of a point: red (rank 0) nearest the south seat. */
 const at = (file: number, rank: number, tableTop: number) => new THREE.Vector3((file - 4) * PITCH, tableTop + BOARD_T + DISC_H / 2, (4.5 - rank) * PITCH);
+// The glyph on a disc faces its owner: red's turned a quarter anticlockwise, black's a quarter clockwise.
+const FACING: Record<Color, THREE.Quaternion> = {
+  red: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2),
+  black: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2),
+};
 const key = (p: Position) => p.rank * 9 + p.file;
 
 function XiangqiView({ store, view, body, onPick, className }: { store: Store; view: View; body: BodyKind; onPick: (point: number) => void; className?: string }) {
@@ -136,6 +141,7 @@ function XiangqiView({ store, view, body, onPick, className }: { store: Store; v
           const mesh = new THREE.Mesh(discGeo, faces.get(w.key)!);
           mesh.castShadow = true; mesh.receiveShadow = true;
           mesh.position.copy(at(w.point % 9, Math.floor(w.point / 9), tableTop));
+          mesh.quaternion.copy(FACING[w.key.startsWith("red") ? "red" : "black"]);
           group.add(mesh);
           p = { mesh, key: w.key, point: w.point };
           pieces.push(p);
@@ -145,7 +151,7 @@ function XiangqiView({ store, view, body, onPick, className }: { store: Store; v
       targets.clear();
       for (const [p, point] of assign) {
         p.point = point; p.mesh.userData.pickId = point;
-        targets.set(p.mesh, { pos: at(point % 9, Math.floor(point / 9), tableTop), quat: FLAT });
+        targets.set(p.mesh, { pos: at(point % 9, Math.floor(point / 9), tableTop), quat: FACING[p.key.startsWith("red") ? "red" : "black"] });
       }
       for (const p of free) { p.point = -1; p.mesh.userData.pickId = undefined; }
       ts.pickables = [...planes, ...assign.map(([p]) => p.mesh)];
