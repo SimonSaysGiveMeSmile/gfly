@@ -86,23 +86,21 @@ export function Runner() {
   return (
     <div className="space-y-3">
       {/* Views ------------------------------------------------------- */}
-      <div className="grid gap-3 lg:grid-cols-12">
-        <Card className="lg:col-span-7" title="The room" hint="Drag to look around. The fly is shown about 60× life size.">
-          <RoomView bus={bus} className="glass-inner aspect-[16/10] w-full" />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card title="The room" hint="Drag to look around. The fly is shown about 60× life size.">
+          <RoomView bus={bus} className="glass-inner aspect-square w-full" />
         </Card>
-        <Card className="flex flex-col lg:col-span-5" title="The brain" hint="Each dot is a real neuron. It lights up when it fires.">
-          <BrainView bus={bus} className="glass-inner min-h-[300px] w-full flex-1" />
+        <Card className="flex flex-col" title="The brain" hint="Each dot is a real neuron. It lights up when it fires.">
+          <BrainView bus={bus} className="glass-inner aspect-square w-full" />
+        </Card>
+        <Card className="flex flex-col" title="The anatomy" hint="Drag to rotate. The body mesh from Google's flybody model.">
+          <AnatomyView className="glass-inner aspect-square w-full" />
         </Card>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
-          <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
-        </Card>
-        <Card title="The anatomy" hint="Drag to rotate. The body mesh from Google's flybody model.">
-          <AnatomyView className="glass-inner min-h-[300px] w-full" />
-        </Card>
-      </div>
+      <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
+        <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
+      </Card>
 
       {/* Controls ---------------------------------------------------- */}
       <div className="grid gap-3 lg:grid-cols-12">
