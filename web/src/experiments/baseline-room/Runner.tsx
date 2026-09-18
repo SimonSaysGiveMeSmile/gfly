@@ -83,14 +83,14 @@ export function Runner() {
   const verdict = slow?.assay;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Views ------------------------------------------------------- */}
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid gap-3 lg:grid-cols-12">
         <Card className="lg:col-span-7" title="The room" hint="Drag to look around. The fly is shown about 60× life size.">
-          <RoomView bus={bus} className="glass-inner aspect-[4/3] w-full" />
+          <RoomView bus={bus} className="glass-inner aspect-[16/10] w-full" />
         </Card>
         <Card className="flex flex-col lg:col-span-5" title="The brain" hint="Each dot is a real neuron. It lights up when it fires.">
-          <BrainView bus={bus} className="glass-inner min-h-[360px] w-full flex-1" />
+          <BrainView bus={bus} className="glass-inner min-h-[300px] w-full flex-1" />
         </Card>
       </div>
 
@@ -99,7 +99,7 @@ export function Runner() {
       </Card>
 
       {/* Controls ---------------------------------------------------- */}
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid gap-3 lg:grid-cols-12">
         <Card className="lg:col-span-4" title="Controls">
           <div className="flex flex-wrap gap-2">
             <button onClick={toggleRun} className="btn-primary">{running ? "Pause" : "Run"}</button>
@@ -160,8 +160,8 @@ export function Runner() {
 
 function Card({ title, hint, className, children }: { title: string; hint?: string; className?: string; children: React.ReactNode }) {
   return (
-    <section className={`glass p-4 ${className ?? ""}`}>
-      <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+    <section className={`glass p-3 ${className ?? ""}`}>
+      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
         <h3 className="t-head">{title}</h3>
         {hint && <p className="t-cap hidden text-right sm:block">{hint}</p>}
       </div>

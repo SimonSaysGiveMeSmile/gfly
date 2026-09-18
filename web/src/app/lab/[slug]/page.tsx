@@ -19,21 +19,21 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
-      <header className="mb-8">
+    <article className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
+      <header className="mb-6">
         <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
-        <h1 className="t-large mt-4">{product.title}</h1>
-        <p className="t-body mt-4 max-w-2xl">{product.summary}</p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="glass p-5">
+        <h1 className="t-large mt-3">{product.title}</h1>
+        <p className="t-body mt-3 max-w-2xl">{product.summary}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="glass p-4">
             <p className="t-cap">What it claims</p>
             <p className="mt-2 text-[15px]">{product.claim}</p>
           </div>
-          <div className="glass p-5">
+          <div className="glass p-4">
             <p className="t-cap">Learning</p>
             <p className="t-body mt-2 text-[15px]">{LEARNING_COPY[product.learning]}</p>
           </div>
-          <div className="glass p-5">
+          <div className="glass p-4">
             <p className="t-cap">Parts of the brain used</p>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {product.circuits.map((c) => <li key={c} className="pill pill-gray">{c}</li>)}
@@ -75,14 +75,14 @@ const OUTCOME = {
 
 function Findings() {
   return (
-    <section className="mt-12">
+    <section className="mt-8">
       <h2 className="t-title">Results</h2>
       <p className="t-body mt-2">Two of four tests pass. One is unclear. One fails, and here is why.</p>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {FINDINGS.map((f) => {
           const o = OUTCOME[f.outcome];
           return (
-            <div key={f.title} className="glass p-6">
+            <div key={f.title} className="glass p-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="t-head">{f.title}</h3>
                 <span className={`pill ${o.cls}`}>{o.label}</span>
