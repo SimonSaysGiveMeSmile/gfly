@@ -32,6 +32,7 @@ export function Runner() {
   const [running, setRunning] = useState(false);
   const [assay, setAssay] = useState<AssayName | null>(null);
   const [lesion, setLesion] = useState<string | null>(null);
+  const [enhanced, setEnhanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
 
@@ -75,6 +76,11 @@ export function Runner() {
     setLesion(next);
     send({ type: "lesion", population: next as never });
   };
+  const toggleEnhance = () => {
+    const next = !enhanced;
+    setEnhanced(next);
+    send({ type: "enhance", enabled: next });
+  };
 
   if (!started) return <StartCard onStart={boot} />;
   if (error) return <div className="glass p-8"><p className="t-head text-red">Something went wrong</p><p className="t-foot mt-2">{error}</p></div>;
@@ -110,6 +116,10 @@ export function Runner() {
             <button onClick={() => send({ type: "reset" })} className="btn">Reset</button>
             <button onClick={() => send({ type: "threat" })} className="btn">Threat</button>
           </div>
+          <p className="t-cap mt-3 mb-2">Enhance</p>
+          <button onClick={toggleEnhance} className={enhanced ? "btn-on text-sm w-full" : "btn text-sm w-full"}>
+            {enhanced ? "Enhanced: ON" : "Enhanced: OFF"}
+          </button>
           <p className="t-cap mt-3 mb-2">Lesions</p>
           <div className="flex flex-wrap gap-1.5">
             {LESIONS.map((l) => (

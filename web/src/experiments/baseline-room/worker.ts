@@ -54,6 +54,7 @@ let circuits: CircuitMap | null = null;
 let world: World = makeWorld();
 let running = false;
 let lesion: string | null = null;
+let enhanced = false;
 
 // Population membership as a bitmask per neuron, so counting spikes is a
 // single pass over the spike list rather than a set lookup per population.
@@ -128,6 +129,7 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "threat": launchThreat(world); break;
       case "gain": if (sim) sim.params.mvPerSynapse = msg.mvPerSynapse; break;
       case "lesion": lesion = msg.population; break;
+      case "enhance": enhanced = msg.enabled; break;
     }
   } catch (err) {
     post({ type: "error", message: err instanceof Error ? err.message : String(err) });
@@ -308,9 +310,14 @@ function drive(eye: "L" | "R") {
     // reading - silences the entire ON channel.
     const dark = 1 - lum;
     const decrement = Math.max(0, -contrast);
+
+    // Enhanced mode: boost contrast sensitivity and transient response
+    const sustainGain = enhanced ? LAMINA_SUSTAINED * 1.5 : LAMINA_SUSTAINED;
+    const transientGain = enhanced ? LAMINA_TRANSIENT * 2.0 : LAMINA_TRANSIENT;
+
     const mv = Math.min(
       LAMINA_CAP,
-      dark * LAMINA_SUSTAINED + decrement * LAMINA_TRANSIENT,
+      dark * sustainGain + decrement * transientGain,
     );
     for (const n of col.on) sim.setBias(n, mv);
     for (const n of col.off) sim.setBias(n, mv);
@@ -400,7 +407,7 @@ function sensorTick() {
     f.heading += (Math.random() < 0.5 ? -1 : 1) * (0.8 + Math.random() * 0.7);
   }
 
-  stepBody(world, secs);
+  stepBody(world, secs, enhanced);
   assayClock += secs;
   updateAssay(hzL, hzR);
 }

@@ -125,8 +125,8 @@ function slabHit(px: number, py: number, dx: number, dy: number, r: Rect): numbe
   return tmin > 0 ? tmin : null;
 }
 
-/** Advance the body. dt in seconds. */
-export function stepBody(w: World, dt: number) {
+/** Advance the body. dt in seconds. Enhanced mode can boost motor output. */
+export function stepBody(w: World, dt: number, enhanced = false) {
   const f = w.fly;
 
   if (f.escapeFor > 0) {
@@ -135,9 +135,13 @@ export function stepBody(w: World, dt: number) {
     f.speed = 420;
   }
 
-  f.heading += f.turn * dt;
-  const nx = f.x + Math.cos(f.heading) * f.speed * dt;
-  const ny = f.y + Math.sin(f.heading) * f.speed * dt;
+  // Enhanced mode: amplify turn and speed commands from the brain
+  const turnGain = enhanced ? 2.5 : 1.0;
+  const speedGain = enhanced ? 1.8 : 1.0;
+
+  f.heading += f.turn * turnGain * dt;
+  const nx = f.x + Math.cos(f.heading) * f.speed * speedGain * dt;
+  const ny = f.y + Math.sin(f.heading) * f.speed * speedGain * dt;
 
   // Walls are solid. On contact the fly slides along them rather than
   // stopping dead, which is what walking flies actually do.

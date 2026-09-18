@@ -7,7 +7,8 @@ export type ToWorker =
   | { type: "assay"; name: AssayName | null }
   | { type: "threat" }
   | { type: "gain"; mvPerSynapse: number }
-  | { type: "lesion"; population: "t4t5" | "lplc2" | "giantFiber" | null };
+  | { type: "lesion"; population: "t4t5" | "lplc2" | "giantFiber" | null }
+  | { type: "enhance"; enabled: boolean };
 
 export type AssayName = "optomotor" | "looming" | "wall" | "compass";
 
