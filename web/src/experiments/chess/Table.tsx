@@ -34,6 +34,7 @@ export function ChessTable() {
   const bodyKind = useBodyKind();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
   const [game, setGame] = useState<GameState>(createGame);
   const [selectedSquare, setSelectedSquare] = useState<Position | null>(null);
   const [legalMoves, setLegalMoves] = useState<Move[]>([]);
@@ -51,7 +52,7 @@ export function ChessTable() {
 
   // Initialize scene
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!started || !containerRef.current) return;
 
     const scene = new TableScene(containerRef.current, {
       body: bodyKind,
@@ -85,7 +86,7 @@ export function ChessTable() {
       scene.dispose();
       ts.current = null;
     };
-  }, [bodyKind]);
+  }, [started, bodyKind]);
 
   const createBoardMeshes = (scene: TableScene) => {
     const tableTop = scene.tableTop;
@@ -399,6 +400,16 @@ export function ChessTable() {
     : game.status === "checkmate"
     ? lt(("msg." + (game.winner === "white" ? "whiteWins" : "blackWins")) as any)
     : lt(("status." + game.status) as any);
+
+  if (!started) {
+    return (
+      <div className="glass p-10 text-center">
+        <h3 className="t-title">{lt("lobby.title")}</h3>
+        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
+        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">

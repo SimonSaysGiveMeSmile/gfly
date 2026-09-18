@@ -4,6 +4,9 @@
 
 export const dict = {
   en: {
+    "lobby.title": "Take a seat",
+    "lobby.body": "A Poly Haven chess set on the tea table. Play against a fly that learns.",
+    "lobby.start": "Start Game",
     "status.waiting": "Waiting to start",
     "status.playing": "Playing",
     "status.checkmate": "Checkmate!",
@@ -26,6 +29,9 @@ export const dict = {
     "promo.title": "Promote pawn to:",
   },
   zh: {
+    "lobby.title": "坐下",
+    "lobby.body": "茶桌上的Poly Haven国际象棋。与会学习的苍蝇对弈。",
+    "lobby.start": "开始游戏",
     "status.waiting": "等待开始",
     "status.playing": "进行中",
     "status.checkmate": "将死！",
@@ -48,6 +54,9 @@ export const dict = {
     "promo.title": "兵升变为：",
   },
   az: {
+    "lobby.title": "Otur",
+    "lobby.body": "Çay masasında Poly Haven şahmat dəsti. Öyrənən milçəyə qarşı oyna.",
+    "lobby.start": "Oyuna Başla",
     "status.waiting": "Başlamaq üçün gözləyir",
     "status.playing": "Oynayır",
     "status.checkmate": "Mat!",

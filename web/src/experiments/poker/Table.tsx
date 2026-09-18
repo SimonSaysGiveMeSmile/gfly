@@ -31,6 +31,7 @@ export function PokerTable() {
   const bodyKind = useBodyKind();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
   const [game, setGame] = useState<GameState>(() => createGame(4, 1000));
   const [thinking, setThinking] = useState(false);
   const [raiseAmount, setRaiseAmount] = useState(50);
@@ -42,7 +43,7 @@ export function PokerTable() {
   const humanSeat = 0;
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!started || !containerRef.current) return;
 
     const scene = new TableScene(containerRef.current, {
       body: bodyKind,
@@ -64,7 +65,7 @@ export function PokerTable() {
       scene.dispose();
       ts.current = null;
     };
-  }, [bodyKind]);
+  }, [started, bodyKind]);
 
   useEffect(() => {
     if (game.status !== "active" || game.currentPlayer === humanSeat || thinking) return;
@@ -220,12 +221,22 @@ export function PokerTable() {
   const humanPlayer = game.players[humanSeat];
 
   const statusText = game.status === "won"
-    ? `${lt("msg.winner")}: ${lt("msg.chips")} ${game.players[game.winner!].chips}`
+    ? `${lt("msg.winner")}: ${game.players[game.winner!].chips} chips`
     : game.currentPlayer === humanSeat
     ? lt("msg.yourTurn")
-    : lt("status.playing");
+    : lt(("phase." + game.phase) as any);
 
-  const brainNames = game.players.map((_, i) => `${lt("msg.chips")} ${game.players[i].chips}`);
+  const brainNames = game.players.map((_, i) => `${game.players[i].chips} chips`);
+
+  if (!started) {
+    return (
+      <div className="glass p-10 text-center">
+        <h3 className="t-title">{lt("lobby.title")}</h3>
+        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
+        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">

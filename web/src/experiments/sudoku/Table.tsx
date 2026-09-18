@@ -28,6 +28,7 @@ export function SudokuTable() {
   const bodyKind = useBodyKind();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
   const [game, setGame] = useState<GameState>(() => createGame("medium"));
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [thinking, setThinking] = useState(false);
@@ -39,7 +40,7 @@ export function SudokuTable() {
   const numberMeshes = useRef<THREE.Group[][]>([]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!started || !containerRef.current) return;
 
     const scene = new TableScene(containerRef.current, {
       body: bodyKind,
@@ -63,7 +64,7 @@ export function SudokuTable() {
       scene.dispose();
       ts.current = null;
     };
-  }, [bodyKind]);
+  }, [started, bodyKind]);
 
   useEffect(() => {
     if (ts.current) {
@@ -273,8 +274,18 @@ export function SudokuTable() {
   };
 
   const statusText = game.status === "won"
-    ? lt("msg.congratulations")
+    ? lt("msg.complete")
     : lt("status.playing");
+
+  if (!started) {
+    return (
+      <div className="glass p-10 text-center">
+        <h3 className="t-title">{lt("lobby.title")}</h3>
+        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
+        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">
