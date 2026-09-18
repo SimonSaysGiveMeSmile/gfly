@@ -37,7 +37,7 @@ void main() {
   vA = activity;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uScale * (1.0 + 2.5 * vA) / -mv.z;
+  gl_PointSize = uScale * (1.0 + 1.4 * vA) / -mv.z;
 }`;
 
 const POINT_FRAG = INFERNO + `
@@ -50,8 +50,9 @@ void main() {
   // brain's shape without washing it out. A spike goes through the inferno
   // ramp and carries almost all of the light.
   vec3 rest = vec3(0.09, 0.04, 0.17);
-  vec3 c = mix(rest, inferno(0.2 + 0.8 * vA), smoothstep(0.0, 0.35, vA));
-  float a = soft * (0.03 + 0.8 * vA);
+  vec3 c = mix(rest, inferno(0.15 + 0.75 * vA), smoothstep(0.0, 0.35, vA));
+  // Kept low so 139k additive points resolve as points rather than a glow.
+  float a = soft * (0.02 + 0.32 * vA);
   gl_FragColor = vec4(c * a, a);
 }`;
 
@@ -147,7 +148,7 @@ export function BrainView({ bus, className }: { bus: FrameBus; className?: strin
       g.setAttribute("activity", activityAttr);
       const mat = new THREE.ShaderMaterial({
         vertexShader: POINT_VERT, fragmentShader: POINT_FRAG,
-        uniforms: { uScale: { value: 6.5 * renderer.getPixelRatio() } },
+        uniforms: { uScale: { value: 4.2 * renderer.getPixelRatio() } },
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
       });
       points = new THREE.Points(g, mat);

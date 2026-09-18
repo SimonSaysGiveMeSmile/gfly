@@ -80,6 +80,9 @@ body {
 
 .divide-line > * + * { border-color: var(--color-line); }
 
+/* WebGL canvases render at device resolution; on screen they fill their panel exactly. */
+.glass-inner > canvas { width: 100% !important; height: 100% !important; display: block; }
+
 /* Background wash so the glass has something to blur. */
 .wash {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
