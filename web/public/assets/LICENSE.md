@@ -96,3 +96,7 @@ all packs under CC0 (https://quaternius.com/license.html).
 
 Licence text from the Gobkit manifest (https://gobkit.com/api/free): "CC0 1.0
 (public domain) — free for any use, commercial or personal, no attribution required."
+
+## Room icons — `web/public/icons/`
+
+The sixteen illustrated icons (one per experiment, plus the navigation) were supplied by the site's author for this site and are not from the sources above.

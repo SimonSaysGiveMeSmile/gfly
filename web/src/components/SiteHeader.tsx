@@ -8,10 +8,11 @@ import { useT } from "@/lib/i18n";
 import { useState } from "react";
 
 const NAV = [
-  { href: "/", key: "nav.experiments" },
-  { href: "/feasibility", key: "nav.how" },
-  { href: "/about", key: "nav.about" },
+  { href: "/", key: "nav.experiments", icon: "/icons/flask.png" },
+  { href: "/feasibility", key: "nav.how", icon: "/icons/how.png" },
+  { href: "/about", key: "nav.about", icon: "/icons/about.png" },
 ] as const;
+const ICON = "inline-block h-[18px] w-[18px] rounded-[5px] align-[-4px] mr-1.5";
 
 export function SiteHeader() {
   const { t } = useT();
@@ -23,14 +24,14 @@ export function SiteHeader() {
         <nav className="ml-auto flex items-center gap-0.5 lg:gap-1">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className="btn hidden md:inline-block text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }}>
-              {t(n.key)}
+              <img src={n.icon} alt="" className={ICON} />{t(n.key)}
             </Link>
           ))}
           <BrainPicker />
           <BodyPicker />
           <LangPicker />
           <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn hidden md:inline-block">
-            {t("nav.github")}
+            <img src="/icons/github.png" alt="" className={ICON} />{t("nav.github")}
           </a>
           {/* Phones: the pages live in a menu so the brain and language pickers keep their room. */}
           <div className="relative md:hidden">
@@ -42,7 +43,7 @@ export function SiteHeader() {
                 <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                 <div className="popover absolute right-0 z-50 mt-2 w-[12rem] p-2">
                   {NAV.map((n) => (
-                    <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 t-head text-sm hover:bg-white/10">{t(n.key)}</Link>
+                    <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 t-head text-sm hover:bg-white/10"><img src={n.icon} alt="" className={ICON} />{t(n.key)}</Link>
                   ))}
                   <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="block rounded-lg px-3 py-2 t-head text-sm hover:bg-white/10">{t("nav.github")}</a>
                 </div>

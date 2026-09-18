@@ -3,6 +3,7 @@ import type { Product } from "./types";
 export const PRODUCTS: Product[] = [
   {
     slug: "baseline-room",
+    icon: "/icons/baseline-room.png",
     preview: "/previews/baseline-room.jpg",
     number: "01",
     title: "The Room",
@@ -22,6 +23,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "mahjong-lobby",
+    icon: "/icons/mahjong-lobby.png",
     preview: "/previews/mahjong-lobby.jpg",
     number: "02",
     title: "Mahjong",
@@ -35,6 +37,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "chess",
+    icon: "/icons/chess.png",
     preview: "/previews/chess.jpg",
     number: "03",
     title: "Chess",
@@ -48,6 +51,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "xiangqi",
+    icon: "/icons/xiangqi.png",
     preview: "/previews/xiangqi.jpg",
     number: "04",
     title: "Chinese chess",
@@ -61,6 +65,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "sudoku",
+    icon: "/icons/sudoku.png",
     preview: "/previews/sudoku.jpg",
     number: "05",
     title: "Sudoku",
@@ -74,6 +79,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "poker",
+    icon: "/icons/poker.png",
     preview: "/previews/poker.jpg",
     number: "06",
     title: "Texas hold'em",
@@ -87,6 +93,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "compass-bench",
+    icon: "/icons/compass-bench.png",
     number: "07",
     title: "The Compass",
     tagline: "Watch 46 neurons hold a heading in the dark.",
@@ -99,6 +106,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "odour-plume",
+    icon: "/icons/odour-plume.png",
     number: "08",
     title: "The Smell",
     tagline: "Fifty-three kinds of smell receptor, one meal to find.",
@@ -111,6 +119,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "lesion-studio",
+    icon: "/icons/lesion-studio.png",
     number: "09",
     title: "Lesions",
     tagline: "Switch off any cell type. See what breaks.",
@@ -123,6 +132,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "silicon-retina",
+    icon: "/icons/silicon-retina.png",
     number: "10",
     title: "The Retina",
     tagline: "Point the fly's motion detector at your webcam.",
@@ -135,6 +145,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "atlas",
+    icon: "/icons/atlas.png",
     number: "11",
     title: "The Atlas",
     tagline: "Every neuron, and the shortest path between any two.",

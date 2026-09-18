@@ -23,6 +23,8 @@ export interface Product {
   references?: { label: string; href: string }[];
   /** A still of the room itself, for its card. */
   preview?: string;
+  /** The room's icon, from the site's own set. */
+  icon?: string;
 }
 
 export const LEARNING_COPY: Record<Product["learning"], string> = {
