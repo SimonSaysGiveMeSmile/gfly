@@ -222,6 +222,42 @@ a:hover .still > img { transform: scale(1.035); filter: saturate(1.05); }
 
 /* ---- Motion ------------------------------------------------------------ */
 
+/* ---- The door to a room, and the ledger over the table ------------------ */
+.lobby { position: relative; overflow: hidden; border-radius: var(--radius-inner); background: rgba(0, 0, 0, 0.42); }
+.lobby-still {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(0.9) brightness(0.92);
+  animation: breathe 26s ease-in-out infinite alternate;
+  transform-origin: 55% 60%;
+}
+@keyframes breathe { from { transform: scale(1); } to { transform: scale(1.06); } }
+.lobby-veil {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(7, 6, 5, 0.92) 0%, rgba(7, 6, 5, 0.55) 34%, rgba(7, 6, 5, 0.05) 62%, transparent 100%),
+    linear-gradient(to right, rgba(7, 6, 5, 0.55) 0%, transparent 55%);
+}
+.lobby-copy { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem 1.6rem 1.7rem; max-width: 46rem; }
+@media (min-width: 1024px) { .lobby-copy { padding: 2rem 2.2rem 2.2rem; } }
+.lobby-go { padding-left: 1.3rem; padding-right: 1.1rem; }
+.lobby-go > span { display: inline-block; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lobby-go:hover > span { transform: translateX(3px); }
+
+/* The panels over the table come in one after another when it appears. */
+.hud { animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.hud:nth-of-type(2) { animation-delay: 80ms; }
+.hud .t-cap { letter-spacing: 0.09em; color: var(--color-label-3); }
+/* Whose turn it is reads in amber; the dot already pulses beside the name. */
+.hud span:has(> .live-dot) .t-foot { color: var(--color-accent-2); }
+.hud span:has(> .live-dot) .num { color: var(--color-accent-2); }
+
+/* A scoresheet: cells are blocks of light, not ruled boxes. */
+.sheet { border-collapse: separate; border-spacing: 2px 2px; }
+.sheet td { background: rgba(255, 236, 214, 0.06); border-radius: 4px; padding: 2px 3px; }
+.sheet td:first-child { background: transparent; }
+.sheet td.on { background: rgba(240, 178, 90, 0.18); }
+@media (prefers-reduced-motion: reduce) { .lobby-still, .hud { animation: none; } }
+
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .rise { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

@@ -13,6 +13,7 @@ import {
 } from "./engine";
 import { makeBot, type Bot } from "./bots";
 import { FlyBrains, type BrainsApi } from "../shared/FlyBrains";
+import { Lobby } from "../shared/Lobby";
 import { tileName, useT, type Key, type T } from "@/lib/i18n";
 import { useMedia } from "@/lib/useMedia";
 import { useBodyKind } from "@/lib/sim/body";
@@ -149,7 +150,7 @@ export function Table() {
   const win = () => { const g = gameRef.current; if (g && canSelfWin(g)) { selfWin(g); bump(ME); } };
   const kong = (k: Kind) => { const g = gameRef.current; if (g) { declareKong(g, k); bump(ME); } };
 
-  if (!g) return <Lobby onStart={() => start()} t={t} />;
+  if (!g) return <Lobby title={t("mj.lobby.title")} body={t("mj.lobby.body")} action={t("mj.lobby.sit")} onStart={() => start()} />;
 
   const ph = g.phase;
   const myTurn = ph.kind === "discard" && ph.seat === ME;
@@ -236,12 +237,3 @@ export function Table() {
   );
 }
 
-function Lobby({ onStart, t }: { onStart: () => void; t: T }) {
-  return (
-    <div className="glass p-10 text-center">
-      <h3 className="t-title">{t("mj.lobby.title")}</h3>
-      <p className="t-body mx-auto mt-3 max-w-md">{t("mj.lobby.body")}</p>
-      <button onClick={onStart} className="btn-primary mt-6">{t("mj.lobby.sit")}</button>
-    </div>
-  );
-}

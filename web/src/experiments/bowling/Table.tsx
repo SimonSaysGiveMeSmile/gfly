@@ -27,7 +27,7 @@ import { getBestLines } from "./bot";
 const ME = 0, FLY = 2;
 const SEATS = TABLE_SEATS.filter((s) => s.seat === FLY);
 const BED_H = 0.03;
-const WAIT: [number, number] = [-0.3, FOUL_Z - 0.02];         // where the fly waits, beside the lane just ahead of you
+const WAIT: [number, number] = [-0.42, FOUL_Z - 0.55];        // where the fly waits: beside the lane, ahead and off your line
 type Hook = "left" | "straight" | "right";
 const HOOK: Record<Hook, number> = { left: -0.045, straight: 0, right: 0.045 };
 
@@ -339,14 +339,14 @@ export function BowlingTable() {
           <div className="hud pointer-events-none max-w-[60%]">
             <span className="t-foot">{lastText}</span>
             {wide && (
-              <table className="num mt-1 text-[11px] leading-tight">
+              <table className="sheet num mt-1.5 text-[11px] leading-tight">
                 <tbody>
                   {([0, 1] as const).map((p) => (
                     <tr key={p}>
                       <td className="pr-2 text-label-2">{names[p === 0 ? ME : FLY]}</td>
                       {Array.from({ length: 10 }, (_, f) => {
                         const fr = game.frames[p][f] ?? [];
-                        return <td key={f} className={`w-8 text-center ${f === game.frame && p === game.player && game.status === "active" ? "text-accent" : ""}`}>{[0, 1, 2].map((i) => mark(fr, i, f === 9)).join(" ")}<br /><span className="text-label-2">{scores[p][f] ?? ""}</span></td>;
+                        return <td key={f} className={`w-8 text-center ${f === game.frame && p === game.player && game.status === "active" ? "on" : ""}`}>{[0, 1, 2].map((i) => mark(fr, i, f === 9)).join(" ")}<br /><span className="text-label-2">{scores[p][f] ?? ""}</span></td>;
                       })}
                     </tr>
                   ))}

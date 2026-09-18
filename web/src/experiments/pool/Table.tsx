@@ -351,7 +351,7 @@ export function PoolTable() {
             ) : (
               <>
                 <label className="hud"><span className="t-cap">{lt("power")}</span>
-                  <input type="range" min={0} max={100} value={Math.round(power * 100)} onChange={(e) => setPower(Number(e.target.value) / 100)} className="w-28 accent-[var(--color-accent)]" />
+                  <input type="range" min={0} max={100} value={Math.round(power * 100)} onChange={(e) => setPower(Number(e.target.value) / 100)} className="rng rng-on w-28" />
                 </label>
                 <button className="btn-primary text-xs" disabled={!canShoot} onClick={shoot}>{lt("shoot")}</button>
               </>
