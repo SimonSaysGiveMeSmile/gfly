@@ -21,6 +21,8 @@ export interface Product {
   /** Does the brain have to learn anything? */
   learning: "innate" | "plastic" | "hybrid";
   references?: { label: string; href: string }[];
+  /** A still of the room itself, for its card. */
+  preview?: string;
 }
 
 export const LEARNING_COPY: Record<Product["learning"], string> = {

@@ -21,6 +21,10 @@ export function ProductCard({ product, index }: { product: Product; index: numbe
           <span className="t-cap num">{product.number}</span>
           <span className={`pill ${s.cls}`}>{product.status === "live" && <span className="live-dot" />}{t(s.key)}</span>
         </div>
+        {product.preview && (
+          // A still of the room, taken from the room itself.
+          <img src={product.preview} alt="" loading="lazy" className="glass-inner mt-4 aspect-video w-full object-cover" />
+        )}
         <h3 className="t-title mt-5">{text.title}</h3>
         <p className="t-body mt-2 text-[15px]">{text.tagline}</p>
         <div className="mt-auto pt-6">

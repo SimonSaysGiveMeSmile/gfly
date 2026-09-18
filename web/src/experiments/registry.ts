@@ -3,6 +3,7 @@ import type { Product } from "./types";
 export const PRODUCTS: Product[] = [
   {
     slug: "baseline-room",
+    preview: "/previews/baseline-room.jpg",
     number: "01",
     title: "The Room",
     tagline: "Put the brain in a room and see if it acts like a fly.",
@@ -21,6 +22,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "mahjong-lobby",
+    preview: "/previews/mahjong-lobby.jpg",
     number: "02",
     title: "Mahjong",
     tagline: "Sit down at a table with three flies and play.",
@@ -33,6 +35,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "chess",
+    preview: "/previews/chess.jpg",
     number: "03",
     title: "Chess",
     tagline: "Play chess against a fly.",
@@ -45,6 +48,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "xiangqi",
+    preview: "/previews/xiangqi.jpg",
     number: "04",
     title: "Chinese chess",
     tagline: "Xiangqi on the tea table, red against a fly.",
@@ -57,6 +61,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "sudoku",
+    preview: "/previews/sudoku.jpg",
     number: "05",
     title: "Sudoku",
     tagline: "Fill a grid with three flies helping, or hindering.",
@@ -69,6 +74,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "poker",
+    preview: "/previews/poker.jpg",
     number: "06",
     title: "Texas hold'em",
     tagline: "A saloon, three flies in cowboy hats, and a pot.",
