@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrainView } from "./BrainView";
 import { RoomView } from "./RoomView";
 import { RetinaPanel } from "./RetinaPanel";
+import { AnatomyView } from "./AnatomyView";
 import { FrameBus, type Ready } from "./bus";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
 
@@ -94,9 +95,14 @@ export function Runner() {
         </Card>
       </div>
 
-      <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
-        <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
-      </Card>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
+          <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
+        </Card>
+        <Card title="The anatomy" hint="Drag to rotate. The body mesh from Google's flybody model.">
+          <AnatomyView className="glass-inner min-h-[300px] w-full" />
+        </Card>
+      </div>
 
       {/* Controls ---------------------------------------------------- */}
       <div className="grid gap-3 lg:grid-cols-12">
