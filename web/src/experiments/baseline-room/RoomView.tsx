@@ -9,8 +9,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { FlyRig, loadFlyRigData } from "@/lib/three/flyRig";
-import { FlyAnimator } from "@/lib/three/flyPose";
+import { loadBody, type Body, type BodyKind } from "@/lib/three/body";
 import { loadEnvironment } from "@/lib/three/env";
 import { FURNITURE, ROOM_H, ROOM_W, ROOM_Z, heightOf } from "./world";
 import type { FrameBus } from "./bus";
@@ -21,8 +20,9 @@ const FOLLOW_DIST = 0.17;        // 17 mm behind it
 
 export type ViewMode = "orbit" | "follow" | "eye";
 
-export function RoomView({ bus, view, overrides, className }: {
+export function RoomView({ bus, kind, view, overrides, className }: {
   bus: FrameBus;
+  kind: BodyKind;
   view: ViewMode;
   /** Manual joint angles, shared with the body panel. */
   overrides: Map<string, number>;
@@ -164,27 +164,22 @@ export function RoomView({ bus, view, overrides, className }: {
     flyGroup.add(flyLight);
     const placeholder = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff453a }));
     flyGroup.add(placeholder);
-    let rig: FlyRig | null = null;
-    let anim: FlyAnimator | null = null;
+    let body: Body | null = null;
     let standHeight = FLY_SCALE * 0.18;
     const head = new THREE.Object3D();             // where the eye view sits
     flyGroup.add(head);
-    loadFlyRigData().then((data) => {
-      if (disposed) return;
-      rig = new FlyRig(data);
-      rig.mesh.castShadow = true;
-      rig.root.scale.setScalar(FLY_SCALE);
-      // Stand on the claws.
-      let low = 0;
-      for (const [n, p] of rig.restPositions) if (n.startsWith("claw")) low = Math.min(low, p.z);
-      standHeight = -low * FLY_SCALE + 0.005;
-      rig.root.position.y = standHeight;
-      const hp = rig.restPositions.get("head")!;
+    loadBody(kind).then((b) => {
+      if (disposed) { b.dispose(); return; }
+      body = b;
+      b.setShadow(true);
+      b.root.scale.setScalar(FLY_SCALE);
+      // Stand on the feet.
+      standHeight = -b.footY * FLY_SCALE + 0.005;
+      b.root.position.y = standHeight;
       // Just in front of the head, between the eyes.
-      head.position.set(0.56 * FLY_SCALE, hp.z * FLY_SCALE + standHeight + 0.01, 0);
+      head.position.set(0.56 * FLY_SCALE, b.headY * FLY_SCALE + standHeight + 0.01, 0);
       flyGroup.remove(placeholder);
-      flyGroup.add(rig.root);
-      anim = new FlyAnimator(rig);
+      flyGroup.add(b.root);
     }).catch((e) => console.error(e));
 
     let latest: Parameters<Parameters<FrameBus["on"]>[0]>[0]["data"] | null = null;
@@ -243,20 +238,20 @@ export function RoomView({ bus, view, overrides, className }: {
       const now = performance.now();
       const dt = (now - last) / 1000; last = now;
 
-      if (anim && latest) {
+      if (body && latest) {
         const fly = latest.fly;
-        anim.mode = fly.airborne ? "fly" : fly.speed > 2 ? "walk" : "idle";
-        anim.speed = Math.min(1, fly.speed / 75);
-        anim.turn = Math.max(-1, Math.min(1, fly.turn / 4));
-        anim.overrides.clear();
-        for (const [k, v] of ovRef.current) anim.overrides.set(k, v);
-        anim.update(dt);
+        body.mode = fly.airborne ? "fly" : fly.speed > 2 ? "walk" : "idle";
+        body.speed = Math.min(1, fly.speed / 75);
+        body.turn = Math.max(-1, Math.min(1, fly.turn / 4));
+        body.overrides.clear();
+        for (const [k, v] of ovRef.current) body.overrides.set(k, v);
+        body.update(dt);
       }
 
       const mode = viewRef.current;
       if (mode !== lastView && (latest || mode !== "follow")) {
         controls.enabled = mode !== "eye";
-        if (rig) rig.mesh.visible = mode !== "eye";
+        body?.setVisible(mode !== "eye");
         camera.fov = mode === "eye" ? 105 : 46;
         camera.updateProjectionMatrix();
         if (mode === "follow") {
@@ -304,16 +299,16 @@ export function RoomView({ bus, view, overrides, className }: {
       disposed = true;
       cancelAnimationFrame(raf);
       off(); ro.disconnect(); controls.dispose();
-      rig?.dispose();
+      if (body) { flyGroup.remove(body.root); body.dispose(); }
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
-        if (o !== rig?.mesh) m.geometry?.dispose?.();
+        m.geometry?.dispose?.();
         (m.material as THREE.Material | undefined)?.dispose?.();
       });
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
-  }, [bus]);
+  }, [bus, kind]);
 
   return <div ref={host} className={className} />;
 }

@@ -9,24 +9,28 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { FlyRig, loadFlyRigData } from "@/lib/three/flyRig";
-import { FlyAnimator, type FlyMode } from "@/lib/three/flyPose";
+import { loadBody, type Body, type BodyKind, type BodyMode as Mode } from "@/lib/three/body";
 import { loadEnvironment } from "@/lib/three/env";
 import type { FrameBus } from "./bus";
 
-export type BodyMode = "live" | FlyMode;
+export type BodyMode = "live" | Mode;
 
-export function BodyView({ bus, mode, overrides, className }: {
+export function BodyView({ bus, kind, mode, overrides, onBody, className }: {
   bus?: FrameBus;
+  kind: BodyKind;
   mode: BodyMode;
   overrides: Map<string, number>;
+  /** Called with the loaded body (its limbs and joints), and null when it goes. */
+  onBody?: (body: Body | null) => void;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const modeRef = useRef(mode);
   const ovRef = useRef(overrides);
+  const onBodyRef = useRef(onBody);
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { ovRef.current = overrides; }, [overrides]);
+  useEffect(() => { onBodyRef.current = onBody; }, [onBody]);
 
   useEffect(() => {
     const el = host.current;
@@ -69,18 +73,15 @@ export function BodyView({ bus, mode, overrides, className }: {
     ring.rotation.x = -Math.PI / 2;
     scene.add(ring);
 
-    let rig: FlyRig | null = null;
-    let anim: FlyAnimator | null = null;
-    loadFlyRigData().then((data) => {
-      if (disposed) return;
-      rig = new FlyRig(data);
-      let low = 0;
-      for (const [n, p] of rig.restPositions) if (n.startsWith("claw")) low = Math.min(low, p.z);
-      ring.position.y = low;
-      scene.add(rig.root);
-      anim = new FlyAnimator(rig);
+    let body: Body | null = null;
+    loadBody(kind).then((b) => {
+      if (disposed) { b.dispose(); return; }
+      body = b;
+      ring.position.y = b.footY;
+      scene.add(b.root);
+      onBodyRef.current?.(b);
       // A small hook so poses can be checked from outside.
-      (window as unknown as { __gflyBody?: unknown }).__gflyBody = { rig, anim };
+      (window as unknown as { __gflyBody?: unknown }).__gflyBody = { body, rig: (b as { rig?: unknown }).rig };
     }).catch((e) => console.error(e));
 
     let latest: { airborne: boolean; speed: number; turn: number } | null = null;
@@ -101,21 +102,21 @@ export function BodyView({ bus, mode, overrides, className }: {
     const tick = () => {
       const now = performance.now();
       const dt = (now - last) / 1000; last = now;
-      if (anim) {
+      if (body) {
         const m = modeRef.current;
         if (m === "live") {
           const f = latest;
-          anim.mode = !f ? "idle" : f.airborne ? "fly" : f.speed > 2 ? "walk" : "idle";
-          anim.speed = f ? Math.min(1, f.speed / 75) : 0;
-          anim.turn = f ? Math.max(-1, Math.min(1, f.turn / 4)) : 0;
+          body.mode = !f ? "idle" : f.airborne ? "fly" : f.speed > 2 ? "walk" : "idle";
+          body.speed = f ? Math.min(1, f.speed / 75) : 0;
+          body.turn = f ? Math.max(-1, Math.min(1, f.turn / 4)) : 0;
         } else {
-          anim.mode = m;
-          anim.speed = m === "walk" ? 0.6 : 0;
-          anim.turn = 0;
+          body.mode = m;
+          body.speed = m === "walk" ? 0.6 : 0;
+          body.turn = 0;
         }
-        anim.overrides.clear();
-        for (const [k, v] of ovRef.current) anim.overrides.set(k, v);
-        anim.update(dt);
+        body.overrides.clear();
+        for (const [k, v] of ovRef.current) body.overrides.set(k, v);
+        body.update(dt);
       }
       controls.update();
       renderer.render(scene, camera);
@@ -129,12 +130,13 @@ export function BodyView({ bus, mode, overrides, className }: {
       off?.();
       ro.disconnect();
       controls.dispose();
-      rig?.dispose();
+      body?.dispose();
+      onBodyRef.current?.(null);
       ring.geometry.dispose(); (ring.material as THREE.Material).dispose();
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
-  }, [bus]);
+  }, [bus, kind]);
 
   return <div ref={host} className={className} />;
 }

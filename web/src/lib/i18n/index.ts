@@ -81,6 +81,18 @@ export function useT(): { t: T; list: (key: Key) => readonly string[]; lang: Lan
   return { t, list, lang };
 }
 
+/**
+ * Strings that belong to one experiment. The room keeps its own small
+ * dictionary next to its code; English is required, the others fall back.
+ */
+export type LocalDict<K extends string> = { en: Record<K, string>; zh?: Partial<Record<K, string>>; az?: Partial<Record<K, string>> };
+
+export function useLocalT<K extends string>(dict: LocalDict<K>): { lt: (key: K, params?: Params) => string; t: T; lang: Lang } {
+  const { t, lang } = useT();
+  const lt = useCallback((key: K, params?: Params) => fill(dict[lang]?.[key] ?? dict.en[key], params), [dict, lang]);
+  return { lt, t, lang };
+}
+
 /** Mahjong tile names, 0..33. */
 export function tileName(t: T, kind: number): string {
   if (kind < 9) return t("tile.man", { n: kind + 1 });

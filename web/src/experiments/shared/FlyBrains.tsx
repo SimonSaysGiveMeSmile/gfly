@@ -15,7 +15,10 @@ import type { FromWorker, ToWorker } from "../baseline-room/protocol";
 import { TIERS, useTier } from "@/lib/sim/tier";
 import { useT, type Key } from "@/lib/i18n";
 
-const SEATS: { seat: number; className: string }[] = [
+export interface BrainSeat { seat: number; className: string }
+
+/** Where the three panels sit over the table: beside the creature they belong to. */
+export const TABLE_SEATS: BrainSeat[] = [
   { seat: 1, className: "right-3 top-[34%]" },
   { seat: 2, className: "left-[57%] top-3" },
   { seat: 3, className: "left-3 top-[34%]" },
@@ -35,8 +38,12 @@ export interface BrainsApi {
 type Note = { key: Key; code: number } | null;
 type SeatState = { ready: boolean; hz: number; note: Note; lessons: number; synapses: number };
 
-export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "overlay" }: {
+export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "overlay", seats: SEATS = TABLE_SEATS, note }: {
   names: string[];
+  /** Which seats get a brain and where its panel goes. */
+  seats?: BrainSeat[];
+  /** The line under the table, if not the mahjong one. */
+  note?: string;
   /** Overlaid on the table, or a strip of its own below it (phones). */
   variant?: "overlay" | "strip";
   /** What a code is called, for the captions. */
@@ -46,7 +53,7 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "o
   /** Called with the wire to the brains once they exist, and with null when they go. */
   onApi: (api: BrainsApi | null) => void;
 }) {
-  const buses = useMemo(() => SEATS.map(() => new FrameBus()), []);
+  const buses = useMemo(() => SEATS.map(() => new FrameBus()), [SEATS]);
   const tier = useTier();
   const [state, setState] = useState<Record<number, SeatState>>({});
   const workers = useRef(new Map<number, Worker>());
@@ -108,15 +115,16 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "o
     onApi(api);
     (window as unknown as { __gflyBrains?: BrainsApi }).__gflyBrains = api;   // a hook for checks from outside
     return () => { ws.forEach((w) => w.terminate()); workers.current.clear(); pending.current.clear(); onApi(null); setState({}); };
-  }, [enabled, buses, tier, onApi]);
+  }, [enabled, buses, tier, onApi, SEATS]);
 
   if (!enabled) return null;
-  const note = t("mj.brain.note", { tier: t(`tier.${TIERS.find((x) => x.tier === tier)!.id}` as Key).toLowerCase() });
+  const tierName = t(`tier.${TIERS.find((x) => x.tier === tier)!.id}` as Key).toLowerCase();
+  const noteText = note ? note.replace("{tier}", tierName) : t("mj.brain.note", { tier: tierName });
   if (variant === "strip") {
     return (
       <div className="mt-2">
         <div className="grid grid-cols-3 gap-2">
-          {[SEATS[2], SEATS[1], SEATS[0]].map(({ seat }) => {
+          {[...SEATS].reverse().map(({ seat }) => {
             const st = state[seat]; const i = SEATS.findIndex((s) => s.seat === seat);
             return (
               <div key={seat} className="min-w-0">
@@ -131,7 +139,7 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "o
             );
           })}
         </div>
-        <p className="t-cap mt-2 px-1">{note}</p>
+        <p className="t-cap mt-2 px-1">{noteText}</p>
       </div>
     );
   }
@@ -151,7 +159,7 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "o
           </div>
         );
       })}
-      <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 t-cap whitespace-nowrap">{note}</p>
+      <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 t-cap whitespace-nowrap">{noteText}</p>
     </>
   );
 }

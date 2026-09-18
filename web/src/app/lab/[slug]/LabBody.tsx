@@ -5,6 +5,10 @@ import type { Product } from "@/experiments/types";
 import { Runner } from "@/experiments/baseline-room/Runner";
 import { FINDINGS } from "@/experiments/baseline-room/results";
 import { Table } from "@/experiments/mahjong-lobby/Table";
+import { ChessTable } from "@/experiments/chess/Table";
+import { XiangqiTable } from "@/experiments/xiangqi/Table";
+import { SudokuTable } from "@/experiments/sudoku/Table";
+import { PokerTable } from "@/experiments/poker/Table";
 import { productText, useT, type T } from "@/lib/i18n";
 
 export function LabBody({ product }: { product: Product }) {
@@ -26,6 +30,14 @@ export function LabBody({ product }: { product: Product }) {
           </>
         ) : product.slug === "mahjong-lobby" ? (
           <Table />
+        ) : product.slug === "chess" ? (
+          <ChessTable />
+        ) : product.slug === "xiangqi" ? (
+          <XiangqiTable />
+        ) : product.slug === "sudoku" ? (
+          <SudokuTable />
+        ) : product.slug === "poker" ? (
+          <PokerTable />
         ) : (
           <Planned t={t} />
         )}

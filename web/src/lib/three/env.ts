@@ -6,11 +6,12 @@
 import * as THREE from "three";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
-export type Probe = "studio" | "garden";
+export type Probe = "studio" | "garden" | "saloon";
 
 const URLS: Record<Probe, string> = {
   studio: "/assets/hdri/studio_small_09_1k.hdr",
   garden: "/assets/hdri/chinese_garden_1k.hdr",
+  saloon: "/assets/hdri/cowboy_town_saloon_1k.hdr",
 };
 
 const hdrCache = new Map<Probe, Promise<THREE.DataTexture>>();

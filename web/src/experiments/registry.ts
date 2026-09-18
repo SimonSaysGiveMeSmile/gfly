@@ -32,8 +32,56 @@ export const PRODUCTS: Product[] = [
     learning: "plastic",
   },
   {
-    slug: "compass-bench",
+    slug: "chess",
     number: "03",
+    title: "Chess",
+    tagline: "Play chess against a fly. Two more watch.",
+    summary:
+      "A Poly Haven chess set on the tea table. The fly across from you plays with a small search for candidate moves; with its brain on, the connectome's mushroom body picks between them and learns from the result.",
+    status: "live",
+    claim: "A fly brain can learn to prefer good chess moves from wins and losses alone.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "xiangqi",
+    number: "04",
+    title: "Chinese chess",
+    tagline: "Xiangqi on the tea table, red against a fly.",
+    summary:
+      "Elephant chess with public-domain pieces, full rules including the river, the palace and flying generals. The fly opposite plays from a short search; its connectome chooses between the candidates and learns.",
+    status: "live",
+    claim: "The same learning circuit that picks mahjong tiles can pick xiangqi moves.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "sudoku",
+    number: "05",
+    title: "Sudoku",
+    tagline: "Fill a grid with three flies helping, or hindering.",
+    summary:
+      "A paper sudoku on the table, solved together. Each fly takes turns placing a digit; a fly with its brain on shows the candidates to its eyes and places what the mushroom body likes, then learns whether it was right.",
+    status: "live",
+    claim: "A fly brain can learn which digits are safe to place from being corrected.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "poker",
+    number: "06",
+    title: "Texas hold'em",
+    tagline: "A saloon, three flies in cowboy hats, and a pot.",
+    summary:
+      "No-limit hold'em at a round saloon table under a cowboy-town light probe. The flies wear hats. Each decides to fold, call or raise from hand strength; with brains on, the connectome makes the call and learns from what it wins and loses.",
+    status: "live",
+    claim: "A fly brain can learn to fold weak hands and press strong ones from chips won and lost.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "compass-bench",
+    number: "07",
     title: "The Compass",
     tagline: "Watch 46 neurons hold a heading in the dark.",
     summary:
@@ -45,7 +93,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "odour-plume",
-    number: "04",
+    number: "08",
     title: "The Smell",
     tagline: "Fifty-three kinds of smell receptor, one meal to find.",
     summary:
@@ -57,7 +105,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "lesion-studio",
-    number: "05",
+    number: "09",
     title: "Lesions",
     tagline: "Switch off any cell type. See what breaks.",
     summary:
@@ -69,7 +117,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "silicon-retina",
-    number: "06",
+    number: "10",
     title: "The Retina",
     tagline: "Point the fly's motion detector at your webcam.",
     summary:
@@ -81,7 +129,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     slug: "atlas",
-    number: "07",
+    number: "11",
     title: "The Atlas",
     tagline: "Every neuron, and the shortest path between any two.",
     summary:

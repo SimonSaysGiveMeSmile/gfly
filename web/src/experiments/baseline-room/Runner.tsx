@@ -6,7 +6,8 @@ import { RoomView, type ViewMode } from "./RoomView";
 import { RetinaPanel } from "./RetinaPanel";
 import { BodyView, type BodyMode } from "./BodyView";
 import { FrameBus, type Ready } from "./bus";
-import { LIMBS, loadFlyRigData } from "@/lib/three/flyRig";
+import { useBodyKind } from "@/lib/sim/body";
+import type { Body, BodyJoint, BodyLimb } from "@/lib/three/body";
 import { FUNCTION_GROUPS } from "@/lib/sim/populations";
 import { TIERS, useTier } from "@/lib/sim/tier";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
@@ -59,8 +60,6 @@ function jointLabel(t: T, name: string) {
   return name;
 }
 
-interface JointMeta { name: string; range: [number, number] }
-
 export function Runner() {
   const { t } = useT();
   const bus = useMemo(() => new FrameBus(), []);
@@ -78,8 +77,11 @@ export function Runner() {
   // Body and camera.
   const [view, setView] = useState<ViewMode>("follow");
   const [bodyMode, setBodyMode] = useState<BodyMode>("live");
-  const [limb, setLimb] = useState(LIMBS[3].id);
-  const [joints, setJoints] = useState<JointMeta[]>([]);
+  const kind = useBodyKind();
+  const [limb, setLimb] = useState("legT1L");
+  const [limbs, setLimbs] = useState<BodyLimb[]>([]);
+  const [joints, setJoints] = useState<BodyJoint[]>([]);
+  const onBody = useCallback((b: Body | null) => { setLimbs(b?.limbs ?? []); setJoints(b?.joints ?? []); }, []);
   const [overrides, setOverrides] = useState<Map<string, number>>(() => new Map());
   const [pilot, setPilot] = useState(false);
   const keys = useRef(new Set<string>());
@@ -117,9 +119,6 @@ export function Runner() {
       else if (m.type === "error") setError(m.message);
     };
     w.postMessage({ type: "load", tier } satisfies ToWorker);
-    loadFlyRigData().then((d) => {
-      setJoints(d.header.bodies.flatMap((b) => b.joints.map((j) => ({ name: j.name, range: j.range }))));
-    }).catch(() => {});
   }, [bus, tier]);
 
   useEffect(() => () => { workerRef.current?.terminate(); workerRef.current = null; }, []);
@@ -187,8 +186,8 @@ export function Runner() {
   const r = slow?.rates;
   const verdict = slow?.assay;
   const fly = slow?.fly;
-  const limbDef = LIMBS.find((l) => l.id === limb)!;
-  const limbJoints = joints.filter((j) => limbDef.match(j.name));
+  const limbId = limbs.some((l) => l.id === limb) ? limb : limbs[0]?.id;
+  const limbJoints = joints.filter((j) => j.limb === limbId);
 
   return (
     <div className="space-y-2">
@@ -200,7 +199,7 @@ export function Runner() {
           right={<Seg value={view} onChange={setView} options={VIEWS} t={t} />}
         >
           <div className="relative">
-            <RoomView bus={bus} view={view} overrides={overrides} className="glass-inner aspect-square w-full" />
+            <RoomView bus={bus} kind={kind} view={view} overrides={overrides} className="glass-inner aspect-square w-full" />
             {pilot && <FlightPad onKey={padKey} climb={t("room.pad.climb")} sink={t("room.pad.sink")} />}
           </div>
         </Card>
@@ -209,7 +208,7 @@ export function Runner() {
           hint={t("room.dragToTurn")}
           right={<Seg value={bodyMode} onChange={setBodyMode} options={BODY_MODES} t={t} />}
         >
-          <BodyView bus={bus} mode={bodyMode} overrides={overrides} className="glass-inner aspect-square w-full" />
+          <BodyView bus={bus} kind={kind} mode={bodyMode} overrides={overrides} onBody={onBody} className="glass-inner aspect-square w-full" />
         </Card>
         <Card className="flex flex-col" title={t("room.card.brain")} hint={t("room.brain.hint")}>
           <BrainView bus={bus} className="glass-inner aspect-square w-full" />
@@ -262,8 +261,8 @@ export function Runner() {
         <Card className="lg:col-span-4" title={t("room.card.limb")} hint={t("room.limb.hint")} right={
           overrides.size > 0 ? <button onClick={() => setOverrides(new Map())} className="btn text-xs">{t("room.limb.release")}</button> : undefined
         }>
-          <select value={limb} onChange={(e) => setLimb(e.target.value)} className="sel w-full">
-            {LIMBS.map((l) => <option key={l.id} value={l.id}>{t(`limb.${l.id}` as Key)}</option>)}
+          <select value={limbId ?? ""} onChange={(e) => setLimb(e.target.value)} className="sel w-full">
+            {limbs.map((l) => <option key={l.id} value={l.id}>{t(l.labelKey as Key)}</option>)}
           </select>
           <div className="mt-2 space-y-1">
             {limbJoints.map((j) => {

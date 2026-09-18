@@ -12,9 +12,10 @@ import {
   type Claim, type Game, type Kind, type Msg,
 } from "./engine";
 import { makeBot, type Bot } from "./bots";
-import { FlyBrains, type BrainsApi } from "./FlyBrains";
+import { FlyBrains, type BrainsApi } from "../shared/FlyBrains";
 import { tileName, useT, type Key, type T } from "@/lib/i18n";
 import { useMedia } from "@/lib/useMedia";
+import { useBodyKind } from "@/lib/sim/body";
 
 const NAMES = ["You", "Otto", "Mira", "Kip"];
 const ME = 0;
@@ -34,6 +35,7 @@ function say(t: T, m: Msg): string {
 export function Table() {
   const { t } = useT();
   const wide = useMedia("(min-width: 1024px)");
+  const bodyKind = useBodyKind();
   const store = useMemo(() => new TableStore(), []);
   const gameRef = useRef<Game | null>(null);
   const bots = useMemo<Bot[]>(() => [0, 1, 2, 3].map((i) => makeBot(0x9e3779b9 * (i + 1))), []);
@@ -165,7 +167,7 @@ export function Table() {
   return (
     <div className="space-y-2">
       <div className="relative w-full h-[62vh] lg:h-[min(calc(100vh-24.5rem),58vw)]">
-        <MahjongView store={store} me={ME} view={view} onPick={pick} onHover={setHover} className="glass-inner h-full w-full" />
+        <MahjongView store={store} me={ME} view={view} body={bodyKind} onPick={pick} onHover={setHover} className="glass-inner h-full w-full" />
 
         {/* Top strip: round, wall, scores. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">

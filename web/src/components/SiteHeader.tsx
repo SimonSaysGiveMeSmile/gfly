@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BrainPicker } from "./BrainPicker";
 import { LangPicker } from "./LangPicker";
+import { BodyPicker } from "./BodyPicker";
 import { useT } from "@/lib/i18n";
 import { useState } from "react";
 
@@ -26,6 +27,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <BrainPicker />
+          <BodyPicker />
           <LangPicker />
           <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn hidden md:inline-block">
             {t("nav.github")}

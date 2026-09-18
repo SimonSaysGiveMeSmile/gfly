@@ -74,10 +74,20 @@ const DEPRESS = 0.8;
 
 /** A coded pattern on the eye: suit sets the grating's direction, rank its pitch. */
 function patternLum(code: number, u: number, v: number): number {
-  const suit = Math.floor(code / 9) % 4, rank = (code % 9) + 1;
-  const ang = suit * (Math.PI / 4) + (code >= 27 ? Math.PI / 8 : 0);
-  const f = 1.5 + rank * 0.9;
-  const ph = code * 1.7;
+  let ang: number, f: number, ph: number;
+  if (code < 36) {
+    const suit = Math.floor(code / 9) % 4, rank = (code % 9) + 1;
+    ang = suit * (Math.PI / 4) + (code >= 27 ? Math.PI / 8 : 0);
+    f = 1.5 + rank * 0.9;
+    ph = code * 1.7;
+  } else {
+    // Any other code (a chess move, a card, a digit) hashes to its own
+    // direction, pitch and phase, so different codes look different.
+    let h = (code * 2654435761) >>> 0; h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+    ang = (h % 360) * (Math.PI / 180);
+    f = 1.5 + ((h >>> 9) % 9) * 0.9;
+    ph = ((h >>> 13) % 628) / 100;
+  }
   const x = Math.cos(ang) * u + Math.sin(ang) * v;
   return 0.5 + 0.45 * Math.sin(x * f * Math.PI + ph);
 }
