@@ -14,6 +14,7 @@ import {
 import { makeBot, type Bot } from "./bots";
 import { FlyBrains, type BrainsApi } from "./FlyBrains";
 import { tileName, useT, type Key, type T } from "@/lib/i18n";
+import { useMedia } from "@/lib/useMedia";
 
 const NAMES = ["You", "Otto", "Mira", "Kip"];
 const ME = 0;
@@ -32,6 +33,7 @@ function say(t: T, m: Msg): string {
 
 export function Table() {
   const { t } = useT();
+  const wide = useMedia("(min-width: 1024px)");
   const store = useMemo(() => new TableStore(), []);
   const gameRef = useRef<Game | null>(null);
   const bots = useMemo<Bot[]>(() => [0, 1, 2, 3].map((i) => makeBot(0x9e3779b9 * (i + 1))), []);
@@ -197,7 +199,7 @@ export function Table() {
           </div>
         </div>
 
-        <FlyBrains names={[t("mj.you"), ...NAMES.slice(1)]} labelOf={(code) => tileName(t, code)} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
+        {wide && <FlyBrains names={[t("mj.you"), ...NAMES.slice(1)]} labelOf={(code) => tileName(t, code)} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />}
 
         {/* Bottom strip: what is happening, and what you can do. */}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
@@ -226,6 +228,7 @@ export function Table() {
         </div>
       </div>
 
+      {!wide && <FlyBrains variant="strip" names={[t("mj.you"), ...NAMES.slice(1)]} labelOf={(code) => tileName(t, code)} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />}
       <p className="t-foot px-1">{t("mj.caption")}</p>
     </div>
   );

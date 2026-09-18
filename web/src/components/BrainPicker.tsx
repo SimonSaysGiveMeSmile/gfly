@@ -15,7 +15,7 @@ export function BrainPicker() {
   return (
     <div className="relative">
       <button onClick={() => setOpen(!open)} className="btn text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }} aria-expanded={open}>
-        {t("nav.brain")}: {name(cur.id)}
+        <span className="hidden sm:inline">{t("nav.brain")}: </span>{name(cur.id)}
       </button>
       {open && (
         <>

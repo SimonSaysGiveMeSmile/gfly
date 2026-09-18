@@ -292,27 +292,48 @@ export function MahjongView({ store, me, view, onPick, onHover, className }: {
       const g = store.game; if (!g) return [];
       return g.players[me].hand.map((t) => meshes.get(t.id)).filter((m): m is THREE.Mesh => !!m);
     };
-    const onMove = (e: PointerEvent) => {
+    const hitAt = (clientX: number, clientY: number): number | null => {
       const r = renderer.domElement.getBoundingClientRect();
-      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-      mouse.set(ndc.x, ndc.y);
+      ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
       const hit = ray.intersectObjects(myHandMeshes(), false)[0];
-      const id = hit ? (hit.object.userData.tileId as number) : null;
-      if (id !== hovered) {
-        hovered = id;
-        lifted.clear();
-        if (id !== null) lifted.add(id);
-        if (store.game) layout(store.game);
-        hoverRef.current(id);
-        renderer.domElement.style.cursor = id !== null ? "pointer" : "default";
-      }
+      return hit ? (hit.object.userData.tileId as number) : null;
     };
-    const onLeave = () => { mouse.set(0, 0); if (hovered !== null) { hovered = null; lifted.clear(); if (store.game) layout(store.game); hoverRef.current(null); } };
-    const onClick = () => { if (hovered !== null) pickRef.current(hovered); };
+    const setHover = (id: number | null) => {
+      if (id === hovered) return;
+      hovered = id;
+      lifted.clear();
+      if (id !== null) lifted.add(id);
+      if (store.game) layout(store.game);
+      hoverRef.current(id);
+      renderer.domElement.style.cursor = id !== null ? "pointer" : "default";
+    };
+    // A mouse lifts a tile by hovering and throws it with a click. A finger
+    // has no hover: the first tap lifts, a second tap on the same tile throws.
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      const r = renderer.domElement.getBoundingClientRect();
+      mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      setHover(hitAt(e.clientX, e.clientY));
+    };
+    const onLeave = (e: PointerEvent) => { if (e.pointerType !== "mouse") return; mouse.set(0, 0); setHover(null); };
+    const onClick = (e: MouseEvent) => {
+      const id = hitAt(e.clientX, e.clientY);
+      if (id === null) { setHover(null); return; }
+      if (id === hovered) pickRef.current(id); else setHover(id);
+    };
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerleave", onLeave);
     renderer.domElement.addEventListener("click", onClick);
+    renderer.domElement.style.touchAction = "none";
+    // Where my tiles are on screen, for checks from outside (tests, the console).
+    (window as unknown as { __gflyMj?: unknown }).__gflyMj = {
+      handScreen: () => myHandMeshes().map((m) => {
+        const v = m.getWorldPosition(new THREE.Vector3()).project(camera);
+        const r = renderer.domElement.getBoundingClientRect();
+        return { id: m.userData.tileId as number, x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+      }),
+    };
 
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;

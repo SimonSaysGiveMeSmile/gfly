@@ -83,6 +83,7 @@ export function Runner() {
   const [overrides, setOverrides] = useState<Map<string, number>>(() => new Map());
   const [pilot, setPilot] = useState(false);
   const keys = useRef(new Set<string>());
+  const pushRef = useRef<() => void>(() => {});
   const tier = useTier();
   const bootedTier = useRef<number | null>(null);
 
@@ -137,6 +138,7 @@ export function Runner() {
     if (!pilot) { send({ type: "pilot", active: false, thrust: 0, yaw: 0, lift: 0 }); return; }
     const push = () => {
       const k = keys.current;
+      if (!keys.current) return;
       const thrust = (k.has("w") || k.has("arrowup") ? 1 : 0) - (k.has("s") || k.has("arrowdown") ? 1 : 0);
       const yaw = (k.has("d") || k.has("arrowright") ? 1 : 0) - (k.has("a") || k.has("arrowleft") ? 1 : 0);
       const lift = (k.has(" ") || k.has("shift") ? 1 : 0) - (k.has("x") || k.has("control") ? 1 : 0);
@@ -150,10 +152,13 @@ export function Runner() {
     };
     const up = (e: KeyboardEvent) => { if (isKey(e)) { keys.current.delete(e.key.toLowerCase()); push(); } };
     const blur = () => { keys.current.clear(); push(); };
+    pushRef.current = push;
     window.addEventListener("keydown", down); window.addEventListener("keyup", up); window.addEventListener("blur", blur);
     push();
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
+    return () => { pushRef.current = () => {}; window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur); };
   }, [pilot, send]);
+  /** On-screen flight buttons: hold to press the key they stand for. */
+  const padKey = (key: string, on: boolean) => { if (on) keys.current.add(key); else keys.current.delete(key); pushRef.current(); };
 
   const toggleRun = () => { send({ type: "run", running: !running }); setRunning(!running); };
   const pickTest = (id: AssayName | null) => { setAssay(id); send({ type: "assay", name: id }); };
@@ -188,13 +193,16 @@ export function Runner() {
   return (
     <div className="space-y-2">
       {/* Views ------------------------------------------------------- */}
-      <div className="grid gap-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
         <Card
           title={t("room.card.room")}
           hint={fly?.airborne ? t("room.flying", { n: Math.round(fly.z) }) : t("room.walking")}
           right={<Seg value={view} onChange={setView} options={VIEWS} t={t} />}
         >
-          <RoomView bus={bus} view={view} overrides={overrides} className="glass-inner aspect-square w-full" />
+          <div className="relative">
+            <RoomView bus={bus} view={view} overrides={overrides} className="glass-inner aspect-square w-full" />
+            {pilot && <FlightPad onKey={padKey} climb={t("room.pad.climb")} sink={t("room.pad.sink")} />}
+          </div>
         </Card>
         <Card
           title={t("room.card.body")}
@@ -216,7 +224,7 @@ export function Runner() {
       </div>
 
       {/* Controls Row ------------------------------------------------- */}
-      <div className="grid gap-2 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
         <Card className="lg:col-span-3" title={t("room.card.flyIt")}>
           <div className="flex flex-wrap gap-1.5">
             <button onClick={toggleRun} className="btn-primary text-xs">{running ? t("room.pause") : t("room.run")}</button>
@@ -271,7 +279,9 @@ export function Runner() {
                     onDoubleClick={() => setJoint(j.name, null)}
                     className={held ? "rng rng-on" : "rng"}
                   />
-                  <span className="t-cap num text-right">{held ? `${Math.round((v * 180) / Math.PI)}°` : t("room.limb.auto")}</span>
+                  {held
+                    ? <button onClick={() => setJoint(j.name, null)} className="t-cap num text-right text-label" title={t("room.limb.release")}>{Math.round((v * 180) / Math.PI)}° ×</button>
+                    : <span className="t-cap num text-right">{t("room.limb.auto")}</span>}
                 </label>
               );
             })}
@@ -285,7 +295,7 @@ export function Runner() {
       </div>
 
       {/* Tests Row ---------------------------------------------------- */}
-      <div className="grid gap-2 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-12">
         <Card className="lg:col-span-5" title={t("room.card.tests")} hint={t("room.tests.hint")}>
           <div className="grid grid-cols-2 gap-2">
             {TESTS.map((x) => (
@@ -332,11 +342,11 @@ function Card({ title, hint, right, className, children }: { title: string; hint
   return (
     <section className={`glass p-2 ${className ?? ""}`}>
       <div className="mb-1.5 flex items-center justify-between gap-2 px-1 min-h-[1.75rem]">
-        <div className="flex items-baseline gap-2 min-w-0">
+        <div className="flex flex-1 items-baseline gap-2 min-w-0">
           <h3 className="t-head text-sm whitespace-nowrap">{title}</h3>
-          {hint && <p className="t-cap truncate">{hint}</p>}
+          {hint && <p className="t-cap truncate min-w-0">{hint}</p>}
         </div>
-        {right}
+        {right && <div className="shrink-0">{right}</div>}
       </div>
       {children}
     </section>
@@ -350,6 +360,36 @@ function Seg<V extends string>({ value, onChange, options, t }: { value: V; onCh
         <button key={o.id} aria-pressed={value === o.id} onClick={() => onChange(o.id)}>{t(o.key)}</button>
       ))}
     </div>
+  );
+}
+
+/** Six hold-to-fly buttons over the room, for fingers and for mice. */
+function FlightPad({ onKey, climb, sink }: { onKey: (key: string, on: boolean) => void; climb: string; sink: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-2">
+      <div className="pointer-events-auto grid grid-cols-3 gap-1">
+        <span /><HoldKey k="w" onKey={onKey}>↑</HoldKey><span />
+        <HoldKey k="a" onKey={onKey}>←</HoldKey><HoldKey k="s" onKey={onKey}>↓</HoldKey><HoldKey k="d" onKey={onKey}>→</HoldKey>
+      </div>
+      <div className="pointer-events-auto flex flex-col gap-1">
+        <HoldKey k=" " onKey={onKey}>{climb}</HoldKey>
+        <HoldKey k="x" onKey={onKey}>{sink}</HoldKey>
+      </div>
+    </div>
+  );
+}
+
+function HoldKey({ k, onKey, children }: { k: string; onKey: (key: string, on: boolean) => void; children: React.ReactNode }) {
+  return (
+    <button
+      className="btn select-none touch-none text-sm"
+      style={{ minWidth: "2.6rem", minHeight: "2.6rem", padding: "0 0.6rem" }}
+      onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); onKey(k, true); }}
+      onPointerUp={() => onKey(k, false)}
+      onPointerCancel={() => onKey(k, false)}
+      onLostPointerCapture={() => onKey(k, false)}
+      onContextMenu={(e) => e.preventDefault()}
+    >{children}</button>
   );
 }
 

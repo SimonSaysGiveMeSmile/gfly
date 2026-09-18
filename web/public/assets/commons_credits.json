@@ -1,0 +1,416 @@
+{
+ "cards/10C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/48/English_pattern_10_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_10_of_clubs.svg"
+ },
+ "cards/10D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/da/English_pattern_10_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_10_of_diamonds.svg"
+ },
+ "cards/10H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/English_pattern_10_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_10_of_hearts.svg"
+ },
+ "cards/10S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/da/English_pattern_10_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_10_of_spades.svg"
+ },
+ "cards/2C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/3/30/English_pattern_2_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_2_of_clubs.svg"
+ },
+ "cards/2D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/9/99/English_pattern_2_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_2_of_diamonds.svg"
+ },
+ "cards/2H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/2/26/English_pattern_2_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_2_of_hearts.svg"
+ },
+ "cards/2S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/English_pattern_2_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_2_of_spades.svg"
+ },
+ "cards/3C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/14/English_pattern_3_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_3_of_clubs.svg"
+ },
+ "cards/3D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/2/2c/English_pattern_3_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_3_of_diamonds.svg"
+ },
+ "cards/3H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/English_pattern_3_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_3_of_hearts.svg"
+ },
+ "cards/3S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/a/a5/English_pattern_3_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_3_of_spades.svg"
+ },
+ "cards/4C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/English_pattern_4_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_4_of_clubs.svg"
+ },
+ "cards/4D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/4e/English_pattern_4_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_4_of_diamonds.svg"
+ },
+ "cards/4H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/English_pattern_4_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_4_of_hearts.svg"
+ },
+ "cards/4S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/3/34/English_pattern_4_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_4_of_spades.svg"
+ },
+ "cards/5C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/7/74/English_pattern_5_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_5_of_clubs.svg"
+ },
+ "cards/5D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/6/6c/English_pattern_5_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_5_of_diamonds.svg"
+ },
+ "cards/5H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/c/c6/English_pattern_5_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_5_of_hearts.svg"
+ },
+ "cards/5S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/English_pattern_5_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_5_of_spades.svg"
+ },
+ "cards/6C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/02/English_pattern_6_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_6_of_clubs.svg"
+ },
+ "cards/6D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/4e/English_pattern_6_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_6_of_diamonds.svg"
+ },
+ "cards/6H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/da/English_pattern_6_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_6_of_hearts.svg"
+ },
+ "cards/6S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/English_pattern_6_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_6_of_spades.svg"
+ },
+ "cards/7C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/6/60/English_pattern_7_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_7_of_clubs.svg"
+ },
+ "cards/7D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/5/5d/English_pattern_7_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_7_of_diamonds.svg"
+ },
+ "cards/7H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/c/cb/English_pattern_7_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_7_of_hearts.svg"
+ },
+ "cards/7S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/English_pattern_7_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_7_of_spades.svg"
+ },
+ "cards/8C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f0/English_pattern_8_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_8_of_clubs.svg"
+ },
+ "cards/8D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/18/English_pattern_8_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_8_of_diamonds.svg"
+ },
+ "cards/8H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/3/3c/English_pattern_8_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_8_of_hearts.svg"
+ },
+ "cards/8S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/English_pattern_8_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_8_of_spades.svg"
+ },
+ "cards/9C.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/14/English_pattern_9_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_9_of_clubs.svg"
+ },
+ "cards/9D.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f5/English_pattern_9_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_9_of_diamonds.svg"
+ },
+ "cards/9H.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/2/22/English_pattern_9_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_9_of_hearts.svg"
+ },
+ "cards/9S.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f0/English_pattern_9_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_9_of_spades.svg"
+ },
+ "cards/AC.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/English_pattern_ace_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_ace_of_clubs.svg"
+ },
+ "cards/AD.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/00/English_pattern_ace_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_ace_of_diamonds.svg"
+ },
+ "cards/AH.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/English_pattern_ace_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_ace_of_hearts.svg"
+ },
+ "cards/AS.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/19/English_pattern_ace_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_ace_of_spades.svg"
+ },
+ "cards/JC.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/8/80/English_pattern_jack_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_jack_of_clubs.svg"
+ },
+ "cards/JD.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/16/English_pattern_jack_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_jack_of_diamonds.svg"
+ },
+ "cards/JH.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/5/56/English_pattern_jack_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_jack_of_hearts.svg"
+ },
+ "cards/JS.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/4f/English_pattern_jack_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_jack_of_spades.svg"
+ },
+ "cards/KH.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/14/English_pattern_king_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_king_of_hearts.svg"
+ },
+ "cards/KS.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f1/English_pattern_king_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)dsfsdf",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_king_of_spades.svg"
+ },
+ "cards/QC.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/English_pattern_queen_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_queen_of_clubs.svg"
+ },
+ "cards/QD.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/4f/English_pattern_queen_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_queen_of_diamonds.svg"
+ },
+ "cards/QH.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/English_pattern_queen_of_hearts.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_queen_of_hearts.svg"
+ },
+ "cards/QS.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/c/ca/English_pattern_queen_of_spades.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_queen_of_spades.svg"
+ },
+ "cards/back.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Atlas_deck_card_back_blue_and_brown.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:Atlas_deck_card_back_blue_and_brown.svg"
+ },
+ "cards/KC.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/3/3e/English_pattern_king_of_clubs.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_king_of_clubs.svg"
+ },
+ "cards/KD.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/1c/English_pattern_king_of_diamonds.svg",
+  "license": "CC0",
+  "artist": "Дмитрий Фомин (Dmitry Fomin)",
+  "page": "https://commons.wikimedia.org/wiki/File:English_pattern_king_of_diamonds.svg"
+ },
+ "xiangqi/board_alt.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/5/58/Xiang_board_%28empty%29.svg",
+  "license": "Public domain",
+  "artist": "Roland Illig",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiang_board_(empty).svg"
+ },
+ "xiangqi/black_advisor.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Xiangqi_ad1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_ad1.svg"
+ },
+ "xiangqi/red_advisor.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/e/ed/Xiangqi_al1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_al1.svg"
+ },
+ "xiangqi/board.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Xiangqi_board.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_board.svg"
+ },
+ "xiangqi/black_cannon.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Xiangqi_cd1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_cd1.svg"
+ },
+ "xiangqi/red_cannon.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Xiangqi_cl1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_cl1.svg"
+ },
+ "xiangqi/black_elephant.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Xiangqi_ed1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_ed1.svg"
+ },
+ "xiangqi/red_elephant.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/7/77/Xiangqi_el1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_el1.svg"
+ },
+ "xiangqi/black_general.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Xiangqi_gd1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_gd1.svg"
+ },
+ "xiangqi/red_general.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/5/50/Xiangqi_gl1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_gl1.svg"
+ },
+ "xiangqi/black_horse.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Xiangqi_hd1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_hd1.svg"
+ },
+ "xiangqi/red_horse.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/04/Xiangqi_hl1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_hl1.svg"
+ },
+ "xiangqi/black_chariot.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Xiangqi_rd1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_rd1.svg"
+ },
+ "xiangqi/red_chariot.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/2/2e/Xiangqi_rl1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_rl1.svg"
+ },
+ "xiangqi/black_soldier.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/03/Xiangqi_sd1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_sd1.svg"
+ },
+ "xiangqi/red_soldier.svg": {
+  "url": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Xiangqi_sl1.svg",
+  "license": "Public domain",
+  "artist": "Wj654cj86",
+  "page": "https://commons.wikimedia.org/wiki/File:Xiangqi_sl1.svg"
+ }
+}

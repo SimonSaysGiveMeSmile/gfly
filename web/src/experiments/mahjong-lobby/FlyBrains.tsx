@@ -35,8 +35,10 @@ export interface BrainsApi {
 type Note = { key: Key; code: number } | null;
 type SeatState = { ready: boolean; hz: number; note: Note; lessons: number; synapses: number };
 
-export function FlyBrains({ names, labelOf, active, enabled, onApi }: {
+export function FlyBrains({ names, labelOf, active, enabled, onApi, variant = "overlay" }: {
   names: string[];
+  /** Overlaid on the table, or a strip of its own below it (phones). */
+  variant?: "overlay" | "strip";
   /** What a code is called, for the captions. */
   labelOf: (code: number) => string;
   active: number | null;
@@ -109,6 +111,30 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi }: {
   }, [enabled, buses, tier, onApi]);
 
   if (!enabled) return null;
+  const note = t("mj.brain.note", { tier: t(`tier.${TIERS.find((x) => x.tier === tier)!.id}` as Key).toLowerCase() });
+  if (variant === "strip") {
+    return (
+      <div className="mt-2">
+        <div className="grid grid-cols-3 gap-2">
+          {[SEATS[2], SEATS[1], SEATS[0]].map(({ seat }) => {
+            const st = state[seat]; const i = SEATS.findIndex((s) => s.seat === seat);
+            return (
+              <div key={seat} className="min-w-0">
+                <div className="flex items-baseline justify-between px-1">
+                  <span className={`t-cap truncate ${active === seat ? "text-label" : ""}`}>{names[seat]}</span>
+                  <span className="t-cap num">{st?.ready ? `${st.hz.toFixed(0)} Hz` : t("mj.brain.loading")}</span>
+                </div>
+                <BrainView bus={buses[i]} className="glass-inner mt-0.5 aspect-square w-full" />
+                <p className="t-cap mt-0.5 truncate px-1">{st?.note ? t(st.note.key, { tile: labelOf(st.note.code) }) : st?.ready ? t("mj.brain.watching") : ""}</p>
+                {st && st.lessons > 0 && <p className="t-cap truncate px-1 text-label-2">{t("mj.brain.lessons", { n: st.lessons, s: st.synapses.toLocaleString() })}</p>}
+              </div>
+            );
+          })}
+        </div>
+        <p className="t-cap mt-2 px-1">{note}</p>
+      </div>
+    );
+  }
   return (
     <>
       {SEATS.map(({ seat, className }, i) => {
@@ -125,9 +151,7 @@ export function FlyBrains({ names, labelOf, active, enabled, onApi }: {
           </div>
         );
       })}
-      <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 t-cap whitespace-nowrap">
-        {t("mj.brain.note", { tier: t(`tier.${TIERS.find((x) => x.tier === tier)!.id}` as Key).toLowerCase() })}
-      </p>
+      <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 t-cap whitespace-nowrap">{note}</p>
     </>
   );
 }
