@@ -23,10 +23,10 @@ export const PRODUCTS: Product[] = [
     slug: "mahjong-lobby",
     number: "02",
     title: "Mahjong",
-    tagline: "Teach the fly a game and let it play real people.",
+    tagline: "Sit down at a table with three flies and play.",
     summary:
-      "An online mahjong table where one seat is a fruit fly. Nothing in a fly's evolution prepared it for tile games, so the connections have to change. The place to do that is the mushroom body, the fly's real learning centre.",
-    status: "planned",
+      "A mahjong table in first person, with three flies for company. Nothing in a fly's evolution prepared it for tile games, so the connections have to change. The place to do that is the mushroom body, the fly's real learning centre. For now the flies play a fixed strategy; the learning version replaces it.",
+    status: "building",
     claim: "The mushroom body's 4,064 learning cells can pick up a playable strategy from wins and losses.",
     circuits: ["Mushroom body", "Reward neurons", "Steering neurons"],
     learning: "plastic",

@@ -9,8 +9,8 @@ import { fetchBlock, readGraph, readNeurons, type NeuronTable } from "@/lib/sim/
 import { BrainSim, DEFAULT_PARAMS } from "@/lib/sim/kernel";
 import { buildCircuitMap, type CircuitMap, type Manifest } from "@/lib/sim/populations";
 import {
-  FURNITURE, ROOM_H, ROOM_W, castRay, distanceToWall, launchThreat,
-  makeWorld, stepBody, type World,
+  FURNITURE, ROOM_H, ROOM_W, castRay, distanceToWall, land, launchThreat,
+  makeWorld, stepBody, takeoff, type World,
 } from "./world";
 import { RETINA_CH, type AssayName, type AssayReport, type FromWorker, type Telemetry, type ToWorker } from "./protocol";
 
@@ -130,6 +130,12 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
       case "gain": if (sim) sim.params.mvPerSynapse = msg.mvPerSynapse; break;
       case "lesion": lesion = msg.population; break;
       case "enhance": enhanced = msg.enabled; break;
+      case "takeoff": takeoff(world, 4); break;
+      case "land": land(world); break;
+      case "pilot":
+        world.pilot.active = msg.active;
+        world.pilot.thrust = msg.thrust; world.pilot.yaw = msg.yaw; world.pilot.lift = msg.lift;
+        break;
     }
   } catch (err) {
     post({ type: "error", message: err instanceof Error ? err.message : String(err) });
@@ -397,14 +403,24 @@ function sensorTick() {
 
   const f = world.fly;
   const asym = (hzR - hzL) / Math.max(1, hzR + hzL);
-  f.turn = asym * 9.0;
-  // Walking Drosophila cruise at roughly 10-30 mm/s.
-  f.speed = Math.min(75, 8 + (hzL + hzR) * 1.4);
+  if (!world.pilot.active) {
+    if (f.airborne) {
+      // In the air the same descending asymmetry steers saccades, and the
+      // summed drive sets airspeed. Flies cruise at a few hundred mm/s.
+      f.turn = asym * 6.0;
+      f.speed = Math.min(600, 240 + (hzL + hzR) * 6);
+    } else {
+      f.turn = asym * 9.0;
+      // Walking Drosophila cruise at roughly 10-30 mm/s.
+      f.speed = Math.min(75, 8 + (hzL + hzR) * 1.4);
+    }
+  }
 
   // The Giant Fibre is a command neuron: one volley and the animal is airborne.
   if (counts.gf > 0 && f.escapeFor <= 0 && lesion !== "giantFiber") {
     f.escapeFor = 0.3;
     f.heading += (Math.random() < 0.5 ? -1 : 1) * (0.8 + Math.random() * 0.7);
+    takeoff(world, 1.6 + Math.random() * 1.5);
   }
 
   stepBody(world, secs, enhanced);
@@ -616,7 +632,7 @@ function sendTelemetry() {
   const f = world.fly;
 
   const trail: number[] = [];
-  for (const p of world.trail) trail.push(p.x, p.y);
+  for (const p of world.trail) trail.push(p.x, p.y, p.z);
 
   const peak = Math.max(1e-6, ...epgCounts);
   const data: Telemetry = {
@@ -624,7 +640,10 @@ function sendTelemetry() {
     realtime,
     meanHz: spikeAccum / sim.n / Math.max(1e-6, simMs / 1000),
     activeSet: sim.activeSize,
-    fly: { x: f.x, y: f.y, heading: f.heading, speed: f.speed, turn: f.turn },
+    fly: {
+      x: f.x, y: f.y, z: f.z, heading: f.heading, speed: f.speed, turn: f.turn,
+      pitch: f.pitch, roll: f.roll, airborne: f.airborne, piloted: world.pilot.active,
+    },
     threat: { active: world.threat.active, size: world.threat.size, bearing: world.threat.bearing },
     trail,
     rates: {

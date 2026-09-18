@@ -8,7 +8,11 @@ export type ToWorker =
   | { type: "threat" }
   | { type: "gain"; mvPerSynapse: number }
   | { type: "lesion"; population: "t4t5" | "lplc2" | "giantFiber" | null }
-  | { type: "enhance"; enabled: boolean };
+  | { type: "enhance"; enabled: boolean }
+  | { type: "takeoff" }
+  | { type: "land" }
+  /** Manual flight. Sending active=false hands the body back to the brain. */
+  | { type: "pilot"; active: boolean; thrust: number; yaw: number; lift: number };
 
 export type AssayName = "optomotor" | "looming" | "wall" | "compass";
 
@@ -21,8 +25,12 @@ export interface Telemetry {
   meanHz: number;
   /** Neurons currently being integrated. */
   activeSet: number;
-  fly: { x: number; y: number; heading: number; speed: number; turn: number };
+  fly: {
+    x: number; y: number; z: number; heading: number; speed: number; turn: number;
+    pitch: number; roll: number; airborne: boolean; piloted: boolean;
+  };
   threat: { active: boolean; size: number; bearing: number };
+  /** x, y, z per point, mm. */
   trail: number[];
   /** Firing rates, Hz, for the populations the assays care about. */
   rates: {

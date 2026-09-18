@@ -41,9 +41,23 @@ single thread, plain JavaScript:
   139,631 neurons with a reconstructed cell body, at its released soma
   position, lit by the simulation's own spike train.
 - **The fly** is the [flybody](https://github.com/TuragaLab/flybody) model
-  (Google DeepMind / HHMI Janelia, Apache-2.0). `tools/build_fly_mesh.py` uses
-  MuJoCo's forward kinematics to place its 85 parts, decimates them, and merges
-  them into one 44k-triangle mesh with the model's own material colours.
+  (Google DeepMind / HHMI Janelia, Apache-2.0), used as a rig, not a statue.
+  `tools/build_fly_rig.py` exports its 68-body kinematic tree, all 102 hinge
+  joints with their axes and ranges, and its 85 parts decimated to 47k
+  triangles and skinned to that tree. In the browser (`web/src/lib/three/flyRig.ts`)
+  it is a three.js skeleton: every joint can be set by name, and
+  `flyPose.ts` choreographs a tripod walking gait, wingbeats with the legs
+  tucked, and a standing fidget from the simulation's motor commands. The
+  joint directions are read off the rig's own axes, so nothing is hand-posed.
+- **Flight.** The body has a vertical axis now. A Giant Fibre volley launches
+  it; it cruises, steers with the same descending asymmetry it walks with, and
+  lands when the escape is over or when you tell it to. You can also take the
+  controls (W/S, A/D, Space, X) and fly it yourself.
+- **Light, furniture and cloth** are Poly Haven (CC0), fetched by
+  `tools/fetch_assets.py`: two light probes, a velvet and a wood, a Chinese tea
+  table, stool and armchair. Nothing on screen is drawn by hand.
+- **Mahjong tiles** are FluffyStuff's
+  [riichi-mahjong-tiles](https://github.com/FluffyStuff/riichi-mahjong-tiles) (CC0).
 - **The eyes** are the ~880 real optic-lobe columns per eye from the release's
   `assignedOlHex1/2` coordinates, showing scene luminance, lamina input, and
   the actual firing of each column's L1 and L2 cells.
@@ -56,7 +70,7 @@ single thread, plain JavaScript:
 GFly/
 ├─ web/                     Next.js app → Vercel
 │  ├─ src/lib/sim/          connectome loader + LIF kernel (shared)
-│  ├─ src/lib/three/        mesh loaders
+│  ├─ src/lib/three/        rig loader, choreography, light probes
 │  ├─ src/experiments/      one self-contained module per experiment
 │  └─ public/               connectome/, brain/, fly/ — the compiled binaries
 ├─ tools/                   offline preprocessing (connectome, brain shell, fly)

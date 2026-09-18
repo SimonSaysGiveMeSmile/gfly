@@ -79,7 +79,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
         <thead><tr>{head.map((h, i) => <th key={i} className="t-cap px-3 py-2 text-left font-medium">{h}</th>)}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className="border-t border-line">
+            <tr key={i}>
               {r.map((c, j) => <td key={j} className="num px-3 py-2.5">{c}</td>)}
             </tr>
           ))}

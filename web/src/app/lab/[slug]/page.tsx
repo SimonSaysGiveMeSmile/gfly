@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PRODUCTS, PRODUCT_BY_SLUG } from "@/experiments/registry";
-import { LEARNING_COPY } from "@/experiments/types";
 import { Runner } from "@/experiments/baseline-room/Runner";
 import { FINDINGS } from "@/experiments/baseline-room/results";
+import { Table } from "@/experiments/mahjong-lobby/Table";
 
 export function generateStaticParams() {
   return PRODUCTS.map((p) => ({ slug: p.slug }));
@@ -19,7 +19,7 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="h-full w-full px-3 py-2 flex flex-col overflow-hidden">
+    <article className="mx-auto h-full w-full max-w-[1400px] px-6 lg:px-10 py-2 flex flex-col overflow-hidden">
       <header className="mb-2 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
         <h1 className="t-title mt-1">{product.title}</h1>
@@ -27,11 +27,13 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        {product.status === "live" && product.slug === "baseline-room" ? (
+        {product.slug === "baseline-room" ? (
           <>
             <Runner />
             <Findings />
           </>
+        ) : product.slug === "mahjong-lobby" ? (
+          <Table />
         ) : (
           <Planned />
         )}

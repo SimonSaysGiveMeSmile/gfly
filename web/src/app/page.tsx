@@ -29,7 +29,7 @@ export default function Home() {
         </div>
         <div className="lg:col-span-5">
           <div className="glass rise p-4" style={{ animationDelay: "240ms" }}>
-            <dl className="divide-y divide-line">
+            <dl className="space-y-1">
               {FACTS.map((f) => (
                 <div key={f.k} className="flex items-baseline justify-between py-3">
                   <dt className="t-foot">{f.k}</dt>
