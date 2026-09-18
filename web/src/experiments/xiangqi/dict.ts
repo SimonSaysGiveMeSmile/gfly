@@ -9,7 +9,7 @@ export type XiangqiKey =
 export const dict: LocalDict<XiangqiKey> = {
   en: {
     "lobby.title": "Take the red side",
-    "lobby.body": "Xiangqi on the tea table, with the public-domain board and pieces from Wikimedia Commons. The fly across from you plays black; the other two watch. It loads the fly and the furniture once, about 3 MB.",
+    "lobby.body": "Xiangqi on the tea table, with the public-domain board and pieces from Wikimedia Commons. The fly across from you plays black. It loads the fly and the furniture once, about 3 MB.",
     "lobby.sit": "Sit down",
     red: "Red", black: "Black", you: "You",
     "turn.you": "Your move", "turn.fly": "{name} is thinking",
@@ -23,7 +23,7 @@ export const dict: LocalDict<XiangqiKey> = {
   },
   zh: {
     "lobby.title": "执红入座",
-    "lobby.body": "茶桌上的象棋，棋盘与棋子来自维基共享资源的公有领域文件。对面的果蝇执黑，另外两只观棋。首次加载果蝇和家具约 3 MB。",
+    "lobby.body": "茶桌上的象棋，棋盘与棋子来自维基共享资源的公有领域文件。对面的果蝇执黑。首次加载果蝇和家具约 3 MB。",
     "lobby.sit": "坐下",
     red: "红方", black: "黑方", you: "你",
     "turn.you": "轮到你走", "turn.fly": "{name} 在思考",
@@ -37,7 +37,7 @@ export const dict: LocalDict<XiangqiKey> = {
   },
   az: {
     "lobby.title": "Qırmızı tərəfi götürün",
-    "lobby.body": "Çay masasında syanqi; lövhə və daşlar Wikimedia Commons-un ictimai mülkiyyət fayllarındandır. Qarşınızdakı milçək qara ilə oynayır, o biri ikisi izləyir. Milçək və mebel bir dəfə, təxminən 3 MB yüklənir.",
+    "lobby.body": "Çay masasında syanqi; lövhə və daşlar Wikimedia Commons-un ictimai mülkiyyət fayllarındandır. Qarşınızdakı milçək qara ilə oynayır. Milçək və mebel bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Otur",
     red: "Qırmızı", black: "Qara", you: "Siz",
     "turn.you": "Sizin gedişiniz", "turn.fly": "{name} düşünür",

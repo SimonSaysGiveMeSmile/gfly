@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Chess on the tea table. You are white at the south seat; the fly at the
- * north seat is black, the flies east and west watch. The set is Poly
+ * Chess on the tea table. You are white at the south seat; the one fly, at
+ * the north seat, is black. The set is Poly
  * Haven's chess_set (CC0): its board and one mesh per piece kind, cloned
  * for every piece on the board. Pieces ease to their squares, so moves
  * and captures animate for free. The engine owns the rules; the bot
@@ -64,7 +64,7 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
     const el = host.current;
     if (!el) return;
     const ts = new TableScene(el, {
-      body, set: "tea", presets: PRESETS, view: viewRef.current,
+      body, set: "tea", presets: PRESETS, view: viewRef.current, seated: [FLY],
       mat: { shape: "square", size: 0.96, texture: "velvet", color: 0x6e7a6a },
     });
     const { scene, tableTop } = ts;
@@ -73,28 +73,28 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
     // The set: board in the middle, one template mesh per colour and kind.
     const group = new THREE.Group();
     scene.add(group);
-    const templates = new Map<string, THREE.Mesh>();
+    const templates = new Map<string, THREE.Object3D>();
     new GLTFLoader().loadAsync("/assets/models/chess_set/chess_set.gltf").then((g) => {
       if (disposed) return;
-      // The loader names objects after their meshes ("Cylinder.014"); the piece names live on the glTF nodes.
+      // The loader names objects after their meshes ("Cylinder.014") and wraps a
+      // multi-material piece (the bishops) in a Group; the piece names live on the
+      // glTF nodes, one per top-level child of the scene.
       const nodes = (g.parser.json as { nodes: { name?: string }[] }).nodes;
-      const nodeName = (o: THREE.Object3D) => { const i = g.parser.associations.get(o)?.nodes; return (i !== undefined && nodes[i]?.name) || o.name; };
-      g.scene.traverse((o) => {
-        const m = o as THREE.Mesh;
-        if (!m.isMesh) return;
-        m.castShadow = true; m.receiveShadow = true;
-        m.name = nodeName(m);
-        if (m.name === "board") {
-          const board = m.clone();
+      for (const o of g.scene.children) {
+        const i = g.parser.associations.get(o)?.nodes;
+        const name = (i !== undefined && nodes[i]?.name) || o.name;
+        o.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+        if (name === "board") {
+          const board = o.clone();
           board.position.set(0, tableTop, 0);
           board.quaternion.copy(TURNED);
           board.scale.setScalar(SCALE);
           group.add(board);
-          return;
+          continue;
         }
-        const mm = /^piece_(\w+?)_(white|black)/.exec(m.name);
-        if (mm && !templates.has(`${mm[2]}-${mm[1]}`)) templates.set(`${mm[2]}-${mm[1]}`, m);
-      });
+        const mm = /^piece_(\w+?)_(white|black)/.exec(name);
+        if (mm && !templates.has(`${mm[2]}-${mm[1]}`)) templates.set(`${mm[2]}-${mm[1]}`, o);
+      }
       seen = -1;                                         // lay the pieces out now the meshes exist
     }).catch((e) => console.error(e));
 
@@ -113,7 +113,7 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
     for (let i = 0; i < 32; i++) { const d = dot(PITCH * 0.14, 0x30d158, 0.8); d.visible = false; group.add(d); dots.push(d); }
 
     // Pieces: a pool of clones per colour and kind, matched to squares by where they last stood.
-    type P = { mesh: THREE.Mesh; key: string; square: number };
+    type P = { mesh: THREE.Object3D; key: string; square: number };
     const pieces: P[] = [];
     const targets = new Map<THREE.Object3D, { pos: THREE.Vector3; quat: THREE.Quaternion }>();
     let seen = -1;
@@ -135,7 +135,7 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
         let p = [...free].find((x) => x.key === w.key);
         if (!p) {
           const t = templates.get(w.key);
-          if (!t) continue;
+          if (!t) { console.error(`chess set has no ${w.key}`); continue; }
           const mesh = t.clone();
           mesh.scale.setScalar(SCALE);
           mesh.quaternion.copy(TURNED);
@@ -189,6 +189,8 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
         return ray.intersectObjects(ts.pickables, true).slice(0, 3).map((h) => ({ name: h.object.name, pickId: h.object.userData.pickId, d: h.distance }));
       },
       pickables: () => ts.pickables.length,
+      pieces: () => pieces.filter((p) => p.mesh.visible).map((p) => `${p.key}@${p.square}`),
+      creatures: () => ts.creatures.map((c) => c.seat),
     };
 
     return () => { disposed = true; ts.dispose(); };

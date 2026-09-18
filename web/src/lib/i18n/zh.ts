@@ -270,7 +270,7 @@ export const zh: Partial<Record<Key, string | readonly string[]>> = {
   "product.mahjong-lobby.tagline": "和三只果蝇同桌打麻将。",
   "product.mahjong-lobby.summary": "第一人称视角的麻将桌，三只果蝇作陪。果蝇的演化从未为牌类游戏做过准备，所以连接必须改变。做这件事的地方是蘑菇体，果蝇真正的学习中枢。开启大脑后，每只果蝇用它来选牌，并从输赢中学习。",
   "product.chess.title": "国际象棋",
-  "product.chess.tagline": "和一只果蝇下棋，另外两只围观。",
+  "product.chess.tagline": "和一只果蝇下棋。",
   "product.chess.summary": "茶桌上摆着 Poly Haven 的棋具。对面的果蝇用一个小搜索提出候选走法；开启大脑后，连接组的蘑菇体在候选之中做选择，并从结果中学习。",
   "product.xiangqi.title": "中国象棋",
   "product.xiangqi.tagline": "茶桌上的象棋，红方对阵一只果蝇。",

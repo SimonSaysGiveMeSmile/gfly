@@ -270,7 +270,7 @@ export const az: Partial<Record<Key, string | readonly string[]>> = {
   "product.mahjong-lobby.tagline": "Üç milçəklə bir masaya otur və oyna.",
   "product.mahjong-lobby.summary": "Birinci şəxs baxışında macan masası, yanınızda üç milçək. Milçəyin təkamülü onu daş oyunlarına hazırlamayıb, ona görə əlaqələr dəyişməlidir. Bunun yeri göbələk cismidir, milçəyin həqiqi öyrənmə mərkəzi. Beyinləri açın, hər milçək atacağı daşı onunla seçir və qalibiyyət-məğlubiyyətdən öyrənir.",
   "product.chess.title": "Şahmat",
-  "product.chess.tagline": "Bir milçəklə şahmat oynayın. İkisi də izləyir.",
+  "product.chess.tagline": "Bir milçəklə şahmat oynayın.",
   "product.chess.summary": "Çay masasının üstündə Poly Haven şahmat dəsti. Qarşınızdakı milçək namizəd gedişləri kiçik axtarışla tapır; beyni açıq olanda konnektomun göbələk cismi onların arasından seçir və nəticədən öyrənir.",
   "product.xiangqi.title": "Çin şahmatı",
   "product.xiangqi.tagline": "Çay masasında syanqi, qırmızı bir milçəyə qarşı.",

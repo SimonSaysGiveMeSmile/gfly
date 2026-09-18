@@ -10,7 +10,7 @@ export type ChessKey =
 export const dict: LocalDict<ChessKey> = {
   en: {
     "lobby.title": "Take the white pieces",
-    "lobby.body": "A Poly Haven chess set on the tea table. Three flies on stools: the one across from you plays black, the other two watch. It loads the set once, about 3 MB.",
+    "lobby.body": "A Poly Haven chess set on the tea table, and one fly on the stool across from you, playing black. It loads the set and the fly once, about 3 MB.",
     "lobby.sit": "Sit down",
     white: "White", black: "Black", you: "You",
     "turn.you": "Your move", "turn.fly": "{name} is thinking",
@@ -25,7 +25,7 @@ export const dict: LocalDict<ChessKey> = {
   },
   zh: {
     "lobby.title": "执白入座",
-    "lobby.body": "茶桌上的 Poly Haven 国际象棋。三只果蝇坐在凳子上：对面那只执黑，另外两只观棋。首次加载棋具约 3 MB。",
+    "lobby.body": "茶桌上的 Poly Haven 国际象棋，对面凳子上坐着一只执黑的果蝇。首次加载棋具和果蝇约 3 MB。",
     "lobby.sit": "坐下",
     white: "白方", black: "黑方", you: "你",
     "turn.you": "轮到你走", "turn.fly": "{name} 在思考",
@@ -40,7 +40,7 @@ export const dict: LocalDict<ChessKey> = {
   },
   az: {
     "lobby.title": "Ağ daşlarla oturun",
-    "lobby.body": "Çay masasında Poly Haven şahmat dəsti. Kətillərdə üç milçək: qarşınızdakı qara ilə oynayır, o biri ikisi izləyir. Dəst bir dəfə, təxminən 3 MB yüklənir.",
+    "lobby.body": "Çay masasında Poly Haven şahmat dəsti və qarşınızdakı kətildə qara ilə oynayan bir milçək. Dəst və milçək bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Otur",
     white: "Ağ", black: "Qara", you: "Siz",
     "turn.you": "Sizin gedişiniz", "turn.fly": "{name} düşünür",

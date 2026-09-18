@@ -35,7 +35,7 @@ export const PRODUCTS: Product[] = [
     slug: "chess",
     number: "03",
     title: "Chess",
-    tagline: "Play chess against a fly. Two more watch.",
+    tagline: "Play chess against a fly.",
     summary:
       "A Poly Haven chess set on the tea table. The fly across from you plays with a small search for candidate moves; with its brain on, the connectome's mushroom body picks between them and learns from the result.",
     status: "live",

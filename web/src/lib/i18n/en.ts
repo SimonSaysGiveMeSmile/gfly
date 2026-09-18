@@ -281,7 +281,7 @@ export const en = {
   "product.mahjong-lobby.tagline": "Sit down at a table with three flies and play.",
   "product.mahjong-lobby.summary": "A mahjong table in first person, with three flies for company. Nothing in a fly's evolution prepared it for tile games, so the connections have to change. The place to do that is the mushroom body, the fly's real learning centre. Switch the brains on and each fly picks its throws with it, and learns from wins and losses.",
   "product.chess.title": "Chess",
-  "product.chess.tagline": "Play chess against a fly. Two more watch.",
+  "product.chess.tagline": "Play chess against a fly.",
   "product.chess.summary": "A Poly Haven chess set on the tea table. The fly across from you plays with a small search for candidate moves; with its brain on, the connectome's mushroom body picks between them and learns from the result.",
   "product.xiangqi.title": "Chinese chess",
   "product.xiangqi.tagline": "Xiangqi on the tea table, red against a fly.",

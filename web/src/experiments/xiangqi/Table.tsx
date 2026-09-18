@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Xiangqi on the tea table. You are red at the south seat; the fly at the
- * north seat is black, the flies east and west watch. The board and the
+ * Xiangqi on the tea table. You are red at the south seat; the one fly, at
+ * the north seat, is black. The board and the
  * piece faces are the public-domain Wikimedia Commons SVGs under
  * /assets/xiangqi, drawn onto a wooden board and wooden discs. Pieces ease
  * to their points, so moves and captures animate.
@@ -62,7 +62,7 @@ function XiangqiView({ store, view, body, onPick, className }: { store: Store; v
     const el = host.current;
     if (!el) return;
     const ts = new TableScene(el, {
-      body, set: "tea", presets: PRESETS, view: viewRef.current,
+      body, set: "tea", presets: PRESETS, view: viewRef.current, seated: [FLY],
       mat: { shape: "square", size: 0.98, texture: "velvet", color: 0x7a5c48 },
     });
     const { scene, tableTop, renderer } = ts;
