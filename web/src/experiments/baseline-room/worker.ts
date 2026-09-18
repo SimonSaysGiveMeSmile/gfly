@@ -7,7 +7,7 @@
 
 import { fetchBlock, readGraph, readNeurons, type NeuronTable } from "@/lib/sim/format";
 import { BrainSim, DEFAULT_PARAMS } from "@/lib/sim/kernel";
-import { buildCircuitMap, groupTable, type CircuitMap, type Manifest } from "@/lib/sim/populations";
+import { buildCircuitMap, buildMushroomBody, groupTable, type CircuitMap, type Manifest, type MushroomBody } from "@/lib/sim/populations";
 import {
   FURNITURE, ROOM_H, ROOM_W, castRay, distanceToWall, land, launchThreat,
   makeWorld, stepBody, takeoff, type World,
@@ -58,8 +58,54 @@ let enhanced = false;
 
 // Population membership as a bitmask per neuron, so counting spikes is a
 // single pass over the spike list rather than a set lookup per population.
-let tag: Uint8Array | null = null;
+let tag: Uint16Array | null = null;
 const T_DNL = 1, T_DNR = 2, T_GF = 4, T_T4 = 8, T_T5 = 16, T_LPL = 32, T_LPR = 64, T_EPG = 128;
+const T_KC = 256, T_MBA = 512, T_MBV = 1024;
+
+// ---- the mushroom body: looking at things, and learning from them ---------
+let mb: MushroomBody | null = null;
+let graph: { offsets: Uint32Array; targets: Uint32Array; weights: Uint16Array } | null = null;
+interface Look { id: number; code: number; until: number; kc: number; mba: number; mbv: number; ms: number; teach: 1 | -1 | 0; kcFired: Set<number> }
+let look: Look | null = null;
+/** mV pushed into the dopamine neurons while a lesson is being taught. */
+const DAN_MV = 9;
+/** How much an active KC->MBON synapse is weakened per lesson. */
+const DEPRESS = 0.8;
+
+/** A coded pattern on the eye: suit sets the grating's direction, rank its pitch. */
+function patternLum(code: number, u: number, v: number): number {
+  const suit = Math.floor(code / 9) % 4, rank = (code % 9) + 1;
+  const ang = suit * (Math.PI / 4) + (code >= 27 ? Math.PI / 8 : 0);
+  const f = 1.5 + rank * 0.9;
+  const ph = code * 1.7;
+  const x = Math.cos(ang) * u + Math.sin(ang) * v;
+  return 0.5 + 0.45 * Math.sin(x * f * Math.PI + ph);
+}
+
+function finishLook() {
+  if (!look || !sim || !mb || !graph) return;
+  const secs = look.ms / 1000;
+  const hz = (n: number, size: number) => n / Math.max(1, size) / secs;
+  let synapses = 0;
+  if (look.teach !== 0) {
+    // Dopamine-gated depression: reward weakens the active KCs' drive onto
+    // the avoidance MBONs, punishment weakens their drive onto approach.
+    const targetsHit = new Set<number>(look.teach > 0 ? mb.avoid : mb.approach);
+    for (const k of look.kcFired) {
+      for (let e = graph.offsets[k]; e < graph.offsets[k + 1]; e++) {
+        if (targetsHit.has(graph.targets[e])) {
+          const w = graph.weights[e];
+          const nw = Math.max(1, Math.round(w * DEPRESS));
+          if (nw !== w) { graph.weights[e] = nw; synapses++; }
+        }
+      }
+    }
+    post({ type: "taught", id: look.id, code: look.code, synapses });
+  } else {
+    post({ type: "looked", id: look.id, code: look.code, kc: hz(look.kc, mb.kc.length), approach: hz(look.mba, mb.approach.length), avoid: hz(look.mbv, mb.avoid.length) });
+  }
+  look = null;
+}
 
 const counts = { dnL: 0, dnR: 0, gf: 0, t4: 0, t5: 0, lplL: 0, lplR: 0, epg: 0 };
 /**
@@ -136,6 +182,13 @@ self.onmessage = async (e: MessageEvent<ToWorker>) => {
         world.pilot.active = msg.active;
         world.pilot.thrust = msg.thrust; world.pilot.yaw = msg.yaw; world.pilot.lift = msg.lift;
         break;
+      case "look":
+      case "teach": {
+        if (!sim || !mb) { post({ type: "looked", id: msg.id, code: msg.code, kc: 0, approach: 0, avoid: 0 }); break; }
+        if (look) finishLook();                       // one at a time; cut the previous short
+        look = { id: msg.id, code: msg.code, until: simMs + msg.ms, ms: msg.ms, kc: 0, mba: 0, mbv: 0, teach: msg.type === "teach" ? msg.reward : 0, kcFired: new Set() };
+        break;
+      }
     }
   } catch (err) {
     post({ type: "error", message: err instanceof Error ? err.message : String(err) });
@@ -164,9 +217,11 @@ async function load(tier: number) {
   );
   sim.wakeAll();
   circuits = buildCircuitMap(nt, manifest);
+  mb = buildMushroomBody(nt, manifest);
+  graph = { offsets: g.offsets, targets: g.targets, weights: g.weights };
 
   // Build the tag map and the EPG index.
-  tag = new Uint8Array(g.n);
+  tag = new Uint16Array(g.n);
   const mark = (idx: ArrayLike<number>, bit: number) => {
     for (let i = 0; i < idx.length; i++) tag![idx[i]] |= bit;
   };
@@ -178,6 +233,9 @@ async function load(tier: number) {
   mark(circuits.lplc2.left, T_LPL);
   mark(circuits.lplc2.right, T_LPR);
   mark(circuits.epg, T_EPG);
+  mark(mb.kc, T_KC);
+  mark(mb.approach, T_MBA);
+  mark(mb.avoid, T_MBV);
 
   epgIndex = new Map();
   circuits.epg.forEach((n, i) => epgIndex.set(n, i));
@@ -236,6 +294,7 @@ async function load(tier: number) {
 }
 
 function doReset() {
+  look = null;
   sim?.reset();
   sim?.wakeAll();
   world = makeWorld();
@@ -296,6 +355,7 @@ function drive(eye: "L" | "R") {
     const a = centre + ((i / (RAY_FAN - 1)) - 0.5) * span;
     fan[i] = castRay(world, a).lum;
   }
+  const showing = look && simMs < look.until ? look : null;
 
   const t4t5Cut = lesion === "t4t5";
   if (t4t5Cut) return;
@@ -305,7 +365,7 @@ function drive(eye: "L" | "R") {
     // u runs front-to-back across the eye; sample the fan at that position.
     const f = ((col.u + 1) / 2) * (RAY_FAN - 1);
     const i0 = Math.floor(f), i1 = Math.min(RAY_FAN - 1, i0 + 1);
-    const lum = fan[i0] + (fan[i1] - fan[i0]) * (f - i0);
+    const lum = showing ? patternLum(showing.code, col.u, col.v) : fan[i0] + (fan[i1] - fan[i0]) * (f - i0);
 
     const a = adapt[c];
     const contrast = lum - a;
@@ -383,6 +443,11 @@ function holdCommandNeurons() {
   if (!sim || !circuits) return;
   for (let i = 0; i < circuits.giantFiber.length; i++) {
     sim.setBias(circuits.giantFiber[i], -TONIC);
+  }
+  // A lesson in progress: the dopamine neurons for reward or punishment fire.
+  if (look && look.teach !== 0 && mb && simMs < look.until) {
+    const dan = look.teach > 0 ? mb.pam : mb.ppl1;
+    for (let i = 0; i < dan.length; i++) sim.setBias(dan[i], DAN_MV);
   }
 }
 
@@ -582,12 +647,18 @@ function loop() {
           const e = epgIndex.get(i);
           if (e !== undefined) epgCounts[e] += 1;
         }
+        if (look && t >= T_KC) {
+          if (t & T_KC) { look.kc++; if (look.teach !== 0) look.kcFired.add(i); }
+          if (t & T_MBA) look.mba++;
+          if (t & T_MBV) look.mbv++;
+        }
       }
     }
 
     simMs += DT;
     sinceSensor += DT;
     sinceRate += DT;
+    if (look && simMs >= look.until) finishLook();
 
     if (sinceSensor >= SENSOR_PERIOD) {
       sinceSensor = 0;

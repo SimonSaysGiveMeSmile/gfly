@@ -9,6 +9,8 @@ import { claimOptions, isHonour, rankOf, shanten, type Claim, type Game, type Ki
 
 export interface Bot {
   chooseDiscard(g: Game, seat: number): Tile;
+  /** The n most sensible throws, best first. A brain picks among these. */
+  topDiscards(g: Game, seat: number, n: number): Tile[];
   chooseClaim(g: Game, seat: number): Claim;
   /** A little personality for the table: how long it "thinks", 0..1. */
   tempo: number;
@@ -38,22 +40,29 @@ export function makeBot(seed: number): Bot {
   const tempo = 0.3 + rnd() * 0.7;
   return {
     tempo,
-    chooseDiscard(g, seat) {
+    topDiscards(g, seat, n) {
       const p = g.players[seat];
       const kinds = p.hand.map((t) => t.kind);
       const counts = new Uint8Array(34);
       for (const k of kinds) counts[k]++;
-      // Prefer the discard that leaves the lowest shanten; break ties on keep value.
-      let best: { t: Tile; sh: number; v: number } | null = null;
+      // Rank by the shanten left behind, then by how little the tile helps.
+      const ranked: { t: Tile; sh: number; v: number }[] = [];
       for (const t of p.hand) {
         const rest = kinds.filter((_, i) => p.hand[i].id !== t.id);
         const sh = shanten(rest, p.melds.length);
         counts[t.kind]--;
         const v = keepValue(t.kind, counts) + rnd() * 0.3;
         counts[t.kind]++;
-        if (!best || sh < best.sh || (sh === best.sh && v < best.v)) best = { t, sh, v };
+        ranked.push({ t, sh, v });
       }
-      return best!.t;
+      ranked.sort((a, b) => a.sh - b.sh || a.v - b.v);
+      // Distinct kinds only; the brain looks at kinds, not copies.
+      const out: Tile[] = [];
+      for (const r of ranked) { if (!out.some((t) => t.kind === r.t.kind)) out.push(r.t); if (out.length >= n) break; }
+      return out;
+    },
+    chooseDiscard(g, seat) {
+      return this.topDiscards(g, seat, 1)[0];
     },
     chooseClaim(g, seat) {
       const opts = claimOptions(g, seat);

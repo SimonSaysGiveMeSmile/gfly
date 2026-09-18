@@ -12,7 +12,20 @@ export type ToWorker =
   | { type: "takeoff" }
   | { type: "land" }
   /** Manual flight. Sending active=false hands the body back to the brain. */
-  | { type: "pilot"; active: boolean; thrust: number; yaw: number; lift: number };
+  | { type: "pilot"; active: boolean; thrust: number; yaw: number; lift: number }
+  /**
+   * Show the eyes a coded pattern for `ms` of simulated time and report what
+   * the mushroom body made of it. `code` picks the pattern (a mahjong tile,
+   * say); the reply is "looked" with the same id.
+   */
+  | { type: "look"; id: number; code: number; ms: number }
+  /**
+   * Dopamine-gated learning: show the pattern again while reward (PAM) or
+   * punishment (PPL1) neurons fire, then depress the Kenyon-cell synapses
+   * that were active onto the opposing output neurons. This changes the
+   * connectome's weights.
+   */
+  | { type: "teach"; id: number; code: number; reward: 1 | -1; ms: number };
 
 export type AssayName = "optomotor" | "looming" | "wall" | "compass";
 
@@ -91,4 +104,8 @@ export type FromWorker =
       retinaL: Uint8Array;
       retinaR: Uint8Array;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** Mushroom body read-out for a "look". Rates in Hz over the window. */
+  | { type: "looked"; id: number; code: number; kc: number; approach: number; avoid: number }
+  /** Learning done: how many synapses changed. */
+  | { type: "taught"; id: number; code: number; synapses: number };

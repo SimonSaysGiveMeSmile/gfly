@@ -126,6 +126,35 @@ export function buildRetina(nt: NeuronTable, m: Manifest, side: 1 | 2): Retina {
 }
 
 /** Everything the baseline experiment needs to wire the body to the brain. */
+/** The mushroom body, the fly's learning centre, split the way its biology is. */
+export interface MushroomBody {
+  /** Kenyon cells: the sparse code for whatever the fly is looking at. */
+  kc: Uint32Array;
+  /** Output neurons. Cholinergic ones drive approach, glutamatergic ones avoidance (Aso et al. 2014). */
+  approach: Uint32Array;
+  avoid: Uint32Array;
+  /** Dopamine neurons: PAM signal reward, PPL1 punishment. */
+  pam: Uint32Array;
+  ppl1: Uint32Array;
+}
+
+export function buildMushroomBody(nt: NeuronTable, m: Manifest): MushroomBody {
+  const typesWith = (re: RegExp) => m.types.filter((t) => re.test(t));
+  const kc = byTypes(nt, m, typesWith(/^KC/));
+  const mbon = byTypes(nt, m, typesWith(/^MBON/));
+  const ach = m.neurotransmitters.findIndex((n) => /acetyl|^ach/i.test(n));
+  const glu = m.neurotransmitters.findIndex((n) => /glut/i.test(n));
+  const approach: number[] = [], avoid: number[] = [];
+  for (const i of mbon) {
+    if (nt.nt[i] === ach) approach.push(i);
+    else if (nt.nt[i] === glu) avoid.push(i);
+  }
+  return {
+    kc, approach: Uint32Array.from(approach), avoid: Uint32Array.from(avoid),
+    pam: byTypes(nt, m, typesWith(/^PAM/)), ppl1: byTypes(nt, m, typesWith(/^PPL1/)),
+  };
+}
+
 export interface CircuitMap {
   retinaL: Retina;
   retinaR: Retina;

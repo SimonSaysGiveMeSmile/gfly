@@ -12,7 +12,7 @@ import {
   type Claim, type Game, type Kind,
 } from "./engine";
 import { makeBot, type Bot } from "./bots";
-import { FlyBrains } from "./FlyBrains";
+import { FlyBrains, type BrainsApi } from "./FlyBrains";
 
 const NAMES = ["You", "Otto", "Mira", "Kip"];
 const ME = 0;
@@ -27,6 +27,9 @@ export function Table() {
   const [hover, setHover] = useState<number | null>(null);
   const [view, setView] = useState<TableView>("seat");
   const [brains, setBrains] = useState(false);
+  const brainsApi = useRef<BrainsApi | null>(null);
+  const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
+  const taughtHand = useRef<number>(0);
   const [myClaim, setMyClaim] = useState<Claim[] | null>(null);
   const answersRef = useRef(new Map<number, Claim>());
   const timer = useRef<number | null>(null);
@@ -63,11 +66,44 @@ export function Table() {
       later(ph.seat === ME ? 380 : 520, () => { draw(g); bump(ph.seat); });
     } else if (ph.kind === "discard" && ph.seat !== ME) {
       const bot = bots[ph.seat];
+      const seat = ph.seat;
+      const api = brainsApi.current;
+      if (api?.ready(seat)) {
+        // The brain decides: look at the sensible candidates, throw the one it likes least.
+        let cancelled = false;
+        const run = async () => {
+          if (canSelfWin(g)) { selfWin(g); bump(seat); return; }
+          const cands = bot.topDiscards(g, seat, 3);
+          const verdicts = await Promise.all(cands.map(async (t) => ({ t, v: await api.look(seat, t.kind) })));
+          if (cancelled || gameRef.current !== g || g.phase.kind !== "discard" || g.phase.seat !== seat) return;
+          const worst = verdicts.reduce((a, b) => ((b.v.approach - b.v.avoid) < (a.v.approach - a.v.avoid) ? b : a));
+          discard(g, worst.t.id);
+          bump(seat);
+        };
+        later(300, () => { run().catch(() => { discard(g, bot.chooseDiscard(g, seat).id); bump(seat); }); });
+        return () => { cancelled = true; };
+      }
       later(650 + bot.tempo * 900, () => {
         if (canSelfWin(g)) selfWin(g);
-        else discard(g, bot.chooseDiscard(g, ph.seat).id);
-        bump(ph.seat);
+        else discard(g, bot.chooseDiscard(g, seat).id);
+        bump(seat);
       });
+    } else if (ph.kind === "over" && brainsApi.current && taughtHand.current !== g.hand) {
+      // Lessons: the winner is rewarded for every tile in its hand; whoever
+      // fed the win is punished for the tile it threw.
+      taughtHand.current = g.hand;
+      const api = brainsApi.current;
+      const winner = ph.winner;
+      if (winner !== null && winner !== ME && api.ready(winner) && ph.winningHand) {
+        const kinds = [...new Set(ph.winningHand.map((t) => t.kind))];
+        (async () => { for (const k of kinds) await api.teach(winner, k, 1); })();
+      }
+      const fed = /wins on (\w+)'s (.+?)\./.exec(ph.reason);
+      if (fed) {
+        const loser = NAMES.indexOf(fed[1]);
+        const kind = KIND_LABELS.indexOf(fed[2]);
+        if (loser > 0 && kind >= 0 && api.ready(loser)) api.teach(loser, kind, -1);
+      }
     } else if (ph.kind === "claim") {
       const answers = new Map<number, Claim>();
       for (const s of ph.pending) if (s !== ME) answers.set(s, bots[s].chooseClaim(g, s));
@@ -111,7 +147,7 @@ export function Table() {
     ph.kind === "over" ? ph.reason
     : myClaim ? `${NAMES[(ph as { discarder: number }).discarder]} threw ${KIND_LABELS[(ph as { tile: { kind: number } }).tile.kind]}.`
     : myTurn ? (hoverTile ? `Throw ${KIND_LABELS[hoverTile.kind]}?` : "Your turn. Pick a tile to throw.")
-    : ph.kind === "discard" ? `${NAMES[ph.seat]} is thinking…`
+    : ph.kind === "discard" ? (brains ? `${NAMES[ph.seat]} is looking at its tiles…` : `${NAMES[ph.seat]} is thinking…`)
     : ph.kind === "draw" ? `${NAMES[ph.seat]} draws.`
     : "…";
 
@@ -152,7 +188,7 @@ export function Table() {
           </div>
         </div>
 
-        <FlyBrains names={NAMES} enabled={brains} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
+        <FlyBrains names={NAMES} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
 
         {/* Bottom strip: what is happening, and what you can do. */}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
