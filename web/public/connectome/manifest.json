@@ -2,26 +2,34 @@
  "dataset": "MaleCNS v1.0 (Janelia / Google Research)",
  "license": "CC-BY 4.0",
  "source": "https://male-cns.janelia.org/download/",
- "builtAt": "2026-09-17T19:57:09Z",
- "neurons": 163997,
+ "builtAt": "2026-09-18T03:31:45Z",
+ "neurons": 164740,
  "columnCells": 23720,
  "neuronFile": "neurons.bin.gz",
  "tiers": [
+  {
+   "threshold": 1,
+   "file": "graph-t1.bin.gz",
+   "edges": 25568639,
+   "synapses": 124039080,
+   "bytesGzip": 74953604,
+   "bytesRaw": 154070822
+  },
   {
    "threshold": 5,
    "file": "graph-t5.bin.gz",
    "edges": 6236426,
    "synapses": 89737406,
-   "bytesGzip": 20024209,
-   "bytesRaw": 38074572
+   "bytesGzip": 20025827,
+   "bytesRaw": 38077544
   },
   {
    "threshold": 10,
    "file": "graph-t10.bin.gz",
    "edges": 2749558,
    "synapses": 67175216,
-   "bytesGzip": 9049956,
-   "bytesRaw": 17153364
+   "bytesGzip": 9050312,
+   "bytesRaw": 17156336
   }
  ],
  "types": [
@@ -3516,6 +3524,7 @@
   "LAL167",
   "ATL040",
   "AN05B009",
+  "ITP",
   "AN18B001",
   "AN06B057",
   "AVLP050",
@@ -8484,6 +8493,7 @@
   "PhG3",
   "IN10B036",
   "PFN(?)",
+  "FB",
   "SMP135",
   "ORN_DL3",
   "AN06B042",
@@ -8509,6 +8519,7 @@
   "AN05B105",
   "DNg02_c",
   "SMP449",
+  "JO-B-unclear",
   "IN08B021",
   "ORN_DL4",
   "GNG293",
@@ -8526,7 +8537,6 @@
   "AN19B098",
   "AVLP354",
   "AN06A027",
-  "JO-B-unclear",
   "AN27X024",
   "AN05B049_a",
   "Dm9_fragment_R",
@@ -8771,7 +8781,6 @@
   "DNge079",
   "CL336",
   "AN05B010",
-  "ITP",
   "AN07B071_b",
   "39474_L",
   "IN07B016",
@@ -11874,9 +11883,12 @@
   "IN21A088",
   "36888_L",
   "JO-A4",
+  "LB3",
   "MNml76",
   "IN19A129",
-  "IN19A135"
+  "IN13A073",
+  "IN19A135",
+  "IN01B088"
  ],
  "superclasses": [
   "unknown",
@@ -11897,6 +11909,7 @@
   "vnc_efferent",
   "cb_efferent",
   "efferent_ascending",
+  "ENS",
   "cb_sensory_tbc",
   "visual_projection_tbc",
   "vnc_motor",

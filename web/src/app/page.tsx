@@ -3,9 +3,9 @@ import { PRODUCTS } from "@/experiments/registry";
 import { ProductCard } from "@/components/ProductCard";
 
 const FACTS = [
-  { k: "Neurons", v: "163,997" },
-  { k: "Connections", v: "6,236,426" },
-  { k: "Download", v: "25 MB" },
+  { k: "Neurons", v: "164,740" },
+  { k: "Connections", v: "25,568,639" },
+  { k: "Download", v: "9–80 MB" },
   { k: "Servers", v: "0" },
 ];
 
@@ -38,7 +38,7 @@ export default function Home() {
               ))}
             </dl>
             <p className="t-foot mt-3">
-              The published data is 13 GB. Compiled for the browser it is 25 MB, about one short video.
+              The published data is 13 GB. Compiled for the browser it is 9, 20 or 75 MB depending on how much of the wiring you ask for; pick that from the Brain menu above.
             </p>
           </div>
         </div>

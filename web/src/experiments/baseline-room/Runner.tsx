@@ -8,6 +8,7 @@ import { BodyView, type BodyMode } from "./BodyView";
 import { FrameBus, type Ready } from "./bus";
 import { LIMBS, loadFlyRigData } from "@/lib/three/flyRig";
 import { FUNCTION_GROUPS } from "@/lib/sim/populations";
+import { TIERS, useTier } from "@/lib/sim/tier";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
 
 type Progress = { label: string; received: number; total: number };
@@ -80,12 +81,15 @@ export function Runner() {
   const [overrides, setOverrides] = useState<Map<string, number>>(() => new Map());
   const [pilot, setPilot] = useState(false);
   const keys = useRef(new Set<string>());
+  const tier = useTier();
+  const bootedTier = useRef<number | null>(null);
 
   const send = useCallback((m: ToWorker) => workerRef.current?.postMessage(m), []);
 
   const boot = useCallback(() => {
     if (workerRef.current) return;
     setStarted(true);
+    bootedTier.current = tier;
     const w = new Worker(new URL("./worker.ts", import.meta.url));
     workerRef.current = w;
     let lastSlow = 0;
@@ -109,13 +113,22 @@ export function Runner() {
       }
       else if (m.type === "error") setError(m.message);
     };
-    w.postMessage({ type: "load", tier: 5 } satisfies ToWorker);
+    w.postMessage({ type: "load", tier } satisfies ToWorker);
     loadFlyRigData().then((d) => {
       setJoints(d.header.bodies.flatMap((b) => b.joints.map((j) => ({ name: j.name, range: j.range }))));
     }).catch(() => {});
-  }, [bus]);
+  }, [bus, tier]);
 
   useEffect(() => () => { workerRef.current?.terminate(); workerRef.current = null; }, []);
+
+  // A different brain size means a different brain: start over with it.
+  useEffect(() => {
+    if (!workerRef.current || bootedTier.current === tier) return;
+    workerRef.current.terminate();
+    workerRef.current = null;
+    setReady(null); setSlow(null); setRunning(false); setAssay(null); setLesion(null); setPilot(false);
+    boot();
+  }, [tier, boot]);
 
   // Hands-on flight: W/S thrust, A/D turn, Space climbs, X sinks.
   useEffect(() => {
@@ -160,7 +173,7 @@ export function Runner() {
     });
   };
 
-  if (!started) return <StartCard onStart={boot} />;
+  if (!started) return <StartCard onStart={boot} tier={tier} />;
   if (error) return <div className="glass p-8"><p className="t-head text-red">Something went wrong</p><p className="t-foot mt-2">{error}</p></div>;
   if (!ready) return <Loading progress={progress} />;
 
@@ -347,12 +360,14 @@ function Key({ k, v }: { k: string; v: string }) {
   );
 }
 
-function StartCard({ onStart }: { onStart: () => void }) {
+function StartCard({ onStart, tier }: { onStart: () => void; tier: number }) {
+  const t = TIERS.find((x) => x.tier === tier)!;
   return (
     <div className="glass p-10 text-center">
       <h3 className="t-title">Load the brain</h3>
       <p className="t-body mx-auto mt-3 max-w-md">
-        This downloads 25 MB once: the connectome, the brain shape and the fly. After that everything runs on your device.
+        {t.label} brain: {t.edges}, {t.size} once, plus the brain shape and the fly. After that everything runs on your device.
+        Change the size from the menu at the top.
       </p>
       <button onClick={onStart} className="btn-primary mt-6">Load</button>
     </div>

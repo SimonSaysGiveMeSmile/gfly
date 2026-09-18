@@ -88,7 +88,7 @@ export const PRODUCTS: Product[] = [
       "A 3D map of all 139,000 cell bodies. Pick two neurons and get the chain of cells that connects them, with the number of synapses at each step.",
     status: "building",
     claim: "Whole-brain path queries answered in the browser, with no server.",
-    circuits: ["All 163,997 neurons"],
+    circuits: ["All 164,740 neurons"],
     learning: "innate",
   },
 ];

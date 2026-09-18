@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrainPicker } from "./BrainPicker";
 
 const NAV = [
   { href: "/", label: "Experiments" },
@@ -17,6 +18,7 @@ export function SiteHeader() {
               {n.label}
             </Link>
           ))}
+          <BrainPicker />
           <a href="https://github.com/SimonSaysGiveMeSmile/gfly" target="_blank" rel="noreferrer" className="btn hidden sm:inline-block">
             GitHub
           </a>

@@ -6,7 +6,7 @@ export const metadata = {
 };
 
 const THRESHOLDS = [
-  { t: "1+", edges: "25,568,639", pct: "100%", gz: "84 MB", ship: false },
+  { t: "1+", edges: "25,568,639", pct: "100%", gz: "75 MB", ship: true },
   { t: "5+", edges: "6,236,426", pct: "72%", gz: "20 MB", ship: true },
   { t: "10+", edges: "2,749,558", pct: "54%", gz: "9 MB", ship: true },
   { t: "20+", edges: "1,060,450", pct: "36%", gz: "3.5 MB", ship: false },

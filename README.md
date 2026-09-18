@@ -7,7 +7,7 @@ June 2026.
 
 **Live:** https://gfly.site
 
-The whole thing runs in the browser. 163,997 neurons and 6,236,426 connections
+The whole thing runs in the browser. 164,740 neurons and 6,236,426 connections
 are compiled into 21.7 MB of static assets, decompressed in a worker, and
 stepped as a leaky integrate-and-fire network at interactive speed. There is no
 backend, no API key, and no inference server.
@@ -20,7 +20,7 @@ does the reduction once, offline:
 
 | Threshold | Connections | Synapses kept | Gzipped |
 |-----------|-------------|---------------|---------|
-| ≥1 synapse  | 25,568,639 | 124,039,080 (100%) | 84 MB |
+| ≥1 synapse  | 25,568,639 | 124,039,080 (100%) | 75 MB |
 | **≥5 synapses** | **6,236,426** | **89,737,406 (72%)** | **20.0 MB** |
 | ≥10 synapses | 2,749,558 | 67,175,216 (54%) | 9.0 MB |
 

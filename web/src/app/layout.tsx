@@ -7,10 +7,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gfly.site"),
   title: { default: "GFly — a real fly brain, running in your browser", template: "%s — GFly" },
   description:
-    "The complete fruit fly connectome from Janelia and Google, simulated live in a browser tab. 163,997 neurons, no server.",
+    "The complete fruit fly connectome from Janelia and Google, simulated live in a browser tab. 164,740 neurons, no server.",
   openGraph: {
     title: "GFly",
-    description: "163,997 real neurons. Running in your browser.",
+    description: "164,740 real neurons. Running in your browser.",
     url: "https://gfly.site", siteName: "GFly", type: "website",
   },
 };
