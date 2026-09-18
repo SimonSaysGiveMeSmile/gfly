@@ -36,17 +36,27 @@ const HAND_Z = 0.45, WALL_Z = 0.31, DISCARD_Z = 0.20, MELD_X = 0.22;
 
 interface Placed { pos: THREE.Vector3; quat: THREE.Quaternion; }
 
-export function MahjongView({ store, me, onPick, onHover, className }: {
+export type TableView = "seat" | "desk";
+
+/** Camera presets in the south seat's frame: where the eye is, what it looks at. */
+const PRESETS: Record<TableView, { pos: [number, number, number]; look: [number, number, number]; fov: number }> = {
+  seat: { pos: [0, TABLE_TOP + 0.33, 0.78], look: [0, TABLE_TOP - 0.03, -0.02], fov: 60 },
+  desk: { pos: [0, TABLE_TOP + 0.52, 0.62], look: [0, TABLE_TOP, 0.22], fov: 52 },
+};
+
+export function MahjongView({ store, me, view, onPick, onHover, className }: {
   store: TableStore;
   me: number;
+  view: TableView;
   onPick: (tileId: number) => void;
   onHover: (tileId: number | null) => void;
   className?: string;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const pickRef = useRef(onPick); const hoverRef = useRef(onHover);
+  const pickRef = useRef(onPick); const hoverRef = useRef(onHover); const viewRef = useRef(view);
   useEffect(() => { pickRef.current = onPick; }, [onPick]);
   useEffect(() => { hoverRef.current = onHover; }, [onHover]);
+  useEffect(() => { viewRef.current = view; }, [view]);
 
   useEffect(() => {
     const el = host.current;
@@ -75,13 +85,15 @@ export function MahjongView({ store, me, onPick, onHover, className }: {
     });
 
     // Camera: eye level for a fly standing on its stool.
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.02, 40);
+    const camera = new THREE.PerspectiveCamera(PRESETS.seat.fov, 1, 0.02, 40);
     const camRig = new THREE.Group();
     seats[0].add(camRig);
-    camRig.position.set(0, TABLE_TOP + 0.33, 0.78);
+    camRig.position.set(...PRESETS.seat.pos);
     camRig.add(camera);
-    const camLook = new THREE.Vector3(0, TABLE_TOP - 0.03, -0.02);
-    seats[0].localToWorld(camLook);
+    const camLookLocal = new THREE.Vector3(...PRESETS.seat.look);
+    const camLook = new THREE.Vector3(), wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3();
+    let wantFov = PRESETS.seat.fov;
+    seats[0].localToWorld(camLook.copy(camLookLocal));
     camera.lookAt(camLook);
     const baseQuat = camera.quaternion.clone();
     const mouse = new THREE.Vector2(0, 0), mouseSmooth = new THREE.Vector2(0, 0);
@@ -349,6 +361,21 @@ export function MahjongView({ store, me, onPick, onHover, className }: {
           f.anim.overrides.set("head", 0.25 * u);
         }
         f.anim.update(dt);
+      }
+
+      // Glide between the seat view and the close look at the desk.
+      const preset = PRESETS[viewRef.current];
+      wantPos.set(...preset.pos); wantLook.set(...preset.look); wantFov = preset.fov;
+      const ck = Math.min(1, dt * 4);
+      if (camRig.position.distanceToSquared(wantPos) > 1e-8 || Math.abs(camera.fov - wantFov) > 0.01) {
+        camRig.position.lerp(wantPos, ck);
+        camLookLocal.lerp(wantLook, ck);
+        camera.fov += (wantFov - camera.fov) * ck;
+        camera.updateProjectionMatrix();
+        seats[0].localToWorld(camLook.copy(camLookLocal));
+        camera.quaternion.copy(baseQuat);           // lookAt from a clean orientation
+        camera.lookAt(camLook);
+        baseQuat.copy(camera.quaternion);
       }
 
       // A little parallax with the mouse, like leaning in.

@@ -35,14 +35,16 @@ void main() {
 const POINT_FRAG = `
 varying float vA;
 varying vec3 vC;
+uniform float uAlpha;
 void main() {
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
   float soft = smoothstep(0.5, 0.3, d);
   // At rest a neuron is a dim dot in its group's colour; a spike lifts it
-  // towards white. Alpha stays low so 139k dots read as dots, not a glow.
-  vec3 c = mix(vC * 0.55, mix(vC, vec3(1.0), 0.55), smoothstep(0.0, 0.5, vA));
-  float a = soft * (0.05 + 0.35 * vA);
+  // towards white. Alpha stays low so 139k dots read as dots, not a glow,
+  // and drops further when the panel is small and the dots pile up.
+  vec3 c = mix(vC * 0.5, mix(vC, vec3(1.0), 0.6), smoothstep(0.0, 0.5, vA));
+  float a = soft * (0.035 + 0.6 * vA) * uAlpha;
   gl_FragColor = vec4(c * a, a);
 }`;
 
@@ -60,8 +62,11 @@ varying vec3 vN; varying vec3 vV;
 uniform vec3 uColor;
 void main() {
   float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
-  gl_FragColor = vec4(uColor, 0.015 + 0.16 * f);
+  gl_FragColor = vec4(uColor, 0.004 + 0.05 * f);
 }`;
+
+/** Per-dot alpha scale for a panel this many CSS pixels across. */
+const alphaFor = (px: number) => Math.min(1, Math.max(0.3, (px / 380) ** 0.8));
 
 export function BrainView({ bus, className }: { bus: FrameBus; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -145,7 +150,7 @@ export function BrainView({ bus, className }: { bus: FrameBus; className?: strin
       g.setAttribute("activity", activityAttr);
       const mat = new THREE.ShaderMaterial({
         vertexShader: POINT_VERT, fragmentShader: POINT_FRAG,
-        uniforms: { uScale: { value: 4.2 * renderer.getPixelRatio() } },
+        uniforms: { uScale: { value: 4.2 * renderer.getPixelRatio() }, uAlpha: { value: alphaFor(el.clientWidth) } },
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
       });
       points = new THREE.Points(g, mat);
@@ -168,6 +173,7 @@ export function BrainView({ bus, className }: { bus: FrameBus; className?: strin
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      if (points) (points.material as THREE.ShaderMaterial).uniforms.uAlpha.value = alphaFor(Math.min(w, h));
     };
     const ro = new ResizeObserver(resize);
     ro.observe(el);

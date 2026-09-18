@@ -6,12 +6,13 @@
  * rules; the bots own the other seats; the view owns the picture.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MahjongView, TableStore } from "./MahjongView";
+import { MahjongView, TableStore, type TableView } from "./MahjongView";
 import {
   canSelfWin, claimOptions, concealedKongs, declareKong, discard, draw, KIND_LABELS, newGame, resolveClaims, selfWin,
   type Claim, type Game, type Kind,
 } from "./engine";
 import { makeBot, type Bot } from "./bots";
+import { FlyBrains } from "./FlyBrains";
 
 const NAMES = ["You", "Otto", "Mira", "Kip"];
 const ME = 0;
@@ -24,6 +25,8 @@ export function Table() {
   const [, setTick] = useState(0);
   const [game, setGame] = useState<Game | null>(null);
   const [hover, setHover] = useState<number | null>(null);
+  const [view, setView] = useState<TableView>("seat");
+  const [brains, setBrains] = useState(false);
   const [myClaim, setMyClaim] = useState<Claim[] | null>(null);
   const answersRef = useRef(new Map<number, Claim>());
   const timer = useRef<number | null>(null);
@@ -115,13 +118,24 @@ export function Table() {
   return (
     <div className="space-y-2">
       <div className="relative w-full" style={{ height: "min(calc(100vh - 24.5rem), 58vw)" }}>
-        <MahjongView store={store} me={ME} onPick={pick} onHover={setHover} className="glass-inner h-full w-full" />
+        <MahjongView store={store} me={ME} view={view} onPick={pick} onHover={setHover} className="glass-inner h-full w-full" />
 
         {/* Top strip: round, wall, scores. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
           <div className="hud">
             <span className="t-cap">Hand {g.hand} · {WINDS[g.round - 27]} round</span>
             <span className="num t-foot">{g.wall.length} tiles left</span>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-1.5 pointer-events-auto">
+            <div className="seg seg-sm">
+              {(["seat", "desk"] as const).map((v) => (
+                <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === "seat" ? "Seat" : "Desk"}</button>
+              ))}
+            </div>
+            <div className="seg seg-sm">
+              <button aria-pressed={brains} onClick={() => setBrains(!brains)} title="Run a live connectome for each fly. Three extra threads.">Brains</button>
+            </div>
           </div>
           <div className="hud items-end">
             {g.players.map((p) => {
@@ -135,7 +149,10 @@ export function Table() {
               );
             })}
           </div>
+          </div>
         </div>
+
+        <FlyBrains names={NAMES} enabled={brains} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
 
         {/* Bottom strip: what is happening, and what you can do. */}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
