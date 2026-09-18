@@ -80,6 +80,15 @@ body {
 
 .divide-line > * + * { border-color: var(--color-line); }
 
+/* Popovers sit over page text, so they are nearly solid and blur what little shows. */
+.popover {
+  background: rgba(22, 22, 26, 0.985);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
 /* WebGL canvases render at device resolution; on screen they fill their panel exactly. */
 .glass-inner > canvas { width: 100% !important; height: 100% !important; display: block; }
 

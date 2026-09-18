@@ -48,15 +48,16 @@ export interface Pilot {
   lift: number;
 }
 
-/** Highest the fly will go, mm. The walls are 160 mm; it can clear them. */
+/** Highest the fly will go, mm: just under the lid of the arena. */
 export const CEILING = 380;
+export const ROOM_Z = 400;
 
 export const ROOM_W = 1200;
 export const ROOM_H = 800;
 
 /** Heights in mm, the same ones the 3D room draws. */
 export function heightOf(r: Rect): number {
-  if (r.kind === "wall") return 160;
+  if (r.kind === "wall") return ROOM_Z;
   if (r.kind === "window") return 120;
   return r.label === "table" ? 75 : r.label === "couch" ? 85 : 60;
 }

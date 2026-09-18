@@ -16,7 +16,7 @@ export function BrainPicker() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="glass absolute right-0 z-50 mt-2 w-[19rem] p-2">
+          <div className="popover absolute right-0 z-50 mt-2 w-[19rem] p-2">
             {TIERS.map((t) => (
               <button
                 key={t.tier}

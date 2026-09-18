@@ -2,9 +2,9 @@
 
 /**
  * The room in 3D. One scene unit is 100 mm. The fly is the flybody rig
- * (Google DeepMind / HHMI Janelia, Apache-2.0), drawn 60x life size so it can
- * be seen at all; a real fly is 3 mm long and would be a single pixel here.
- * Its legs and wings are choreographed from the simulation's commands.
+ * (Google DeepMind / HHMI Janelia, Apache-2.0) at life size: 3 mm long, so
+ * from across the arena it is a speck and the follow camera has to get
+ * close. Its legs and wings are choreographed from the simulation's commands.
  */
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -12,11 +12,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { FlyRig, loadFlyRigData } from "@/lib/three/flyRig";
 import { FlyAnimator } from "@/lib/three/flyPose";
 import { loadEnvironment } from "@/lib/three/env";
-import { FURNITURE, ROOM_H, ROOM_W, heightOf } from "./world";
+import { FURNITURE, ROOM_H, ROOM_W, ROOM_Z, heightOf } from "./world";
 import type { FrameBus } from "./bus";
 
 const U = 0.01;                  // mm -> scene units
-const FLY_SCALE = 1.8;           // ~180 mm on screen for a 3 mm animal, about 60x
+const FLY_SCALE = 0.03;          // a 3 mm animal, life size
+const FOLLOW_DIST = 0.17;        // 17 mm behind it
 
 export type ViewMode = "orbit" | "follow" | "eye";
 
@@ -51,20 +52,20 @@ export function RoomView({ bus, view, overrides, className }: {
     scene.fog = new THREE.Fog(0x0b0b0e, 20, 44);
 
     const W = ROOM_W * U, H = ROOM_H * U;
-    const camera = new THREE.PerspectiveCamera(46, 1, 0.03, 100);
-    camera.position.set(W * 0.5 + 2.2, 2.6, H * 0.55 + 4.2);
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.002, 100);
+    camera.position.set(W * 0.5 + 2.6, 2.4, H * 0.92);
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(W / 2, 0.3, H * 0.55);
+    controls.target.set(W / 2, 0.2, H * 0.45);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxPolarAngle = Math.PI * 0.49;
-    controls.minDistance = 1.2;
+    controls.minDistance = 0.05;
     controls.maxDistance = 26;
 
     // Light: a warm window on the far wall, a cool fill, soft shadows, and a
     // photographed studio probe (Poly Haven, CC0) for the fly's cuticle.
     loadEnvironment(renderer, "studio").then((env) => { if (!disposed) { scene.environment = env; scene.environmentIntensity = 0.45; } }).catch(() => {});
-    scene.add(new THREE.HemisphereLight(0xb9c4ff, 0x141210, 0.7));
+    scene.add(new THREE.HemisphereLight(0xb9c4ff, 0x141210, 1.1));
     const sun = new THREE.DirectionalLight(0xffe2b0, 2.4);
     sun.position.set(W * 0.4, 8, -4);
     sun.castShadow = true;
@@ -86,6 +87,14 @@ export function RoomView({ bus, view, overrides, className }: {
     floor.position.set(W / 2, 0, H / 2);
     floor.receiveShadow = true;
     scene.add(floor);
+    // The lid, so flight has something over it rather than a void.
+    const lid = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      new THREE.MeshStandardMaterial({ color: 0x23252b, roughness: 1, side: THREE.DoubleSide }),
+    );
+    lid.rotation.x = Math.PI / 2;
+    lid.position.set(W / 2, ROOM_Z * U, H / 2);
+    scene.add(lid);
 
     // 100 mm floor grid
     const gridPts: number[] = [];
@@ -107,6 +116,7 @@ export function RoomView({ bus, view, overrides, className }: {
       const geo = new THREE.BoxGeometry(r.w * U, h, r.h * U);
       const mesh = new THREE.Mesh(geo, r.kind === "window" ? winMat : isWall ? wallMat : furnMat);
       mesh.position.set((r.x + r.w / 2) * U, h / 2 + (r.kind === "window" ? 0.3 : 0), (r.y + r.h / 2) * U);
+      if (isWall) (mesh.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
       mesh.castShadow = !isWall;
       mesh.receiveShadow = true;
       scene.add(mesh);
@@ -139,7 +149,7 @@ export function RoomView({ bus, view, overrides, className }: {
 
     // Ground shadow disc so altitude reads even in the free view.
     const shadowDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(0.5, 32),
+      new THREE.CircleGeometry(0.5 * FLY_SCALE / 1.8, 32),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }),
     );
     shadowDisc.rotation.x = -Math.PI / 2;
@@ -149,10 +159,10 @@ export function RoomView({ bus, view, overrides, className }: {
     const flyGroup = new THREE.Group();
     flyGroup.rotation.order = "YZX";
     scene.add(flyGroup);
-    const flyLight = new THREE.PointLight(0xdfe8ff, 5, 4, 2);
-    flyLight.position.set(0.6, 1.4, 0.6);
+    const flyLight = new THREE.PointLight(0xdfe8ff, 0.004, 0.06, 2);
+    flyLight.position.set(0.02, 0.05, 0.02);
     flyGroup.add(flyLight);
-    const placeholder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff453a }));
+    const placeholder = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 8), new THREE.MeshStandardMaterial({ color: 0xff453a }));
     flyGroup.add(placeholder);
     let rig: FlyRig | null = null;
     let anim: FlyAnimator | null = null;
@@ -183,10 +193,10 @@ export function RoomView({ bus, view, overrides, className }: {
       latest = f.data;
       flyGroup.position.set(fly.x * U, fly.z * U, fly.y * U);
       flyGroup.rotation.set(fly.roll, -fly.heading, fly.pitch);
-      shadowDisc.position.set(fly.x * U, 0.004, fly.y * U);
-      const s = Math.max(0.15, 0.45 - fly.z * U * 0.08);
+      shadowDisc.position.set(fly.x * U, 0.0005, fly.y * U);
+      const s = Math.max(0.5, 1.2 - fly.z * U * 0.4);
       shadowDisc.scale.setScalar(s);
-      (shadowDisc.material as THREE.MeshBasicMaterial).opacity = Math.max(0.08, 0.4 - fly.z * U * 0.08);
+      (shadowDisc.material as THREE.MeshBasicMaterial).opacity = Math.max(0.06, 0.4 - fly.z * U * 0.2);
 
       if (th.active && th.size > 0.01) {
         const d = 1.5;                                  // 150 mm out from the fly
@@ -194,7 +204,7 @@ export function RoomView({ bus, view, overrides, className }: {
         threat.visible = true;
         threat.scale.setScalar(rad);
         threat.position.set(
-          fly.x * U + Math.cos(th.bearing) * d, fly.z * U + 0.25 + rad, fly.y * U + Math.sin(th.bearing) * d,
+          fly.x * U + Math.cos(th.bearing) * d, fly.z * U + standHeight + rad * 0.6, fly.y * U + Math.sin(th.bearing) * d,
         );
       } else {
         threat.visible = false;
@@ -202,7 +212,7 @@ export function RoomView({ bus, view, overrides, className }: {
 
       const n = Math.min(TRAIL_MAX, Math.floor(tr.length / 3));
       for (let i = 0; i < n; i++) {
-        trailPos[i * 3] = tr[i * 3] * U; trailPos[i * 3 + 1] = tr[i * 3 + 2] * U + 0.02; trailPos[i * 3 + 2] = tr[i * 3 + 1] * U;
+        trailPos[i * 3] = tr[i * 3] * U; trailPos[i * 3 + 1] = tr[i * 3 + 2] * U + 0.002; trailPos[i * 3 + 2] = tr[i * 3 + 1] * U;
         const a = 0.08 + 0.92 * (i / Math.max(1, n));
         const air = tr[i * 3 + 2] > 5;
         trailCol[i * 3] = (air ? 0.25 : 0.19) * a; trailCol[i * 3 + 1] = (air ? 0.78 : 0.82) * a; trailCol[i * 3 + 2] = (air ? 0.88 : 0.35) * a;
@@ -227,6 +237,8 @@ export function RoomView({ bus, view, overrides, className }: {
     const homePos = camera.position.clone(), homeTarget = controls.target.clone();
     let lastView: ViewMode | null = null;
     let raf = 0, last = performance.now();
+    // A small hook so the camera can be checked from outside.
+    (window as unknown as { __gflyRoom?: unknown }).__gflyRoom = { camera, controls, flyGroup };
     const tick = () => {
       const now = performance.now();
       const dt = (now - last) / 1000; last = now;
@@ -242,26 +254,36 @@ export function RoomView({ bus, view, overrides, className }: {
       }
 
       const mode = viewRef.current;
-      if (mode !== lastView) {
+      if (mode !== lastView && (latest || mode !== "follow")) {
         controls.enabled = mode !== "eye";
         if (rig) rig.mesh.visible = mode !== "eye";
         camera.fov = mode === "eye" ? 105 : 46;
         camera.updateProjectionMatrix();
-        if (mode === "follow" && lastView !== null) {
-          // Come in close behind the animal.
-          tmpDir.subVectors(camera.position, controls.target).setLength(3.2);
-          camera.position.copy(flyGroup.position).add(tmpDir).setY(Math.max(1.2, flyGroup.position.y + 1.4));
+        if (mode === "follow") {
+          // Come in close behind the animal, a little above it.
+          tmpDir.subVectors(camera.position, controls.target).setY(0).setLength(FOLLOW_DIST);
+          controls.target.copy(flyGroup.position).setY(flyGroup.position.y + standHeight);
+          camera.position.copy(controls.target).add(tmpDir).setY(flyGroup.position.y + standHeight + FOLLOW_DIST * 0.75);
         } else if (mode === "orbit") {
           camera.position.copy(homePos); controls.target.copy(homeTarget);
         }
         lastView = mode;
       }
       if (mode === "follow") {
-        // Keep whatever orbit offset the person chose, but track the fly.
+        // Keep whatever orbit offset the person chose, but track the fly,
+        // and never let the camera leave the box.
         tmpTarget.copy(flyGroup.position).setY(flyGroup.position.y + standHeight);
-        tmpDir.subVectors(tmpTarget, controls.target).multiplyScalar(Math.min(1, dt * 6));
+        tmpDir.subVectors(tmpTarget, controls.target);
         controls.target.add(tmpDir);
         camera.position.add(tmpDir);
+        // Stay within a band of the follow distance (the wheel can zoom a little).
+        tmpDir.subVectors(camera.position, controls.target);
+        const len = tmpDir.length();
+        const want = Math.min(FOLLOW_DIST * 2.2, Math.max(FOLLOW_DIST * 0.6, len));
+        if (Math.abs(want - len) > 1e-6) camera.position.copy(controls.target).add(tmpDir.setLength(want));
+        camera.position.x = Math.min(W - 0.18, Math.max(0.18, camera.position.x));
+        camera.position.z = Math.min(H - 0.18, Math.max(0.18, camera.position.z));
+        camera.position.y = Math.min(ROOM_Z * U - 0.08, Math.max(0.012, camera.position.y));
         controls.update();
       } else if (mode === "eye") {
         head.getWorldPosition(tmpPos);
