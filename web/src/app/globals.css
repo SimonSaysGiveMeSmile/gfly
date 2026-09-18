@@ -1,33 +1,40 @@
 @import "tailwindcss";
 
 /*
- * GFly. Dark, glass, sans-serif. The visualisations are the colour; the
- * chrome stays out of the way.
+ * GFly. A dark room with one warm lamp over the table. Serif for what the
+ * site says, grotesk for what it measures; no borders anywhere, surfaces are
+ * only a shade lighter than the ground. The visualisations are the colour.
  */
 
 @theme {
-  --color-bg: #000000;
-  --color-bg-2: #0b0b0e;
-  --color-glass: rgba(255, 255, 255, 0.07);
-  --color-glass-2: rgba(255, 255, 255, 0.11);
-  --color-line: rgba(255, 255, 255, 0.10);
-  --color-line-2: rgba(255, 255, 255, 0.18);
+  --color-bg: #070605;
+  --color-bg-2: #0e0c0a;
+  --color-glass: rgba(255, 236, 214, 0.06);
+  --color-glass-2: rgba(255, 236, 214, 0.10);
+  --color-line: rgba(255, 236, 214, 0.10);
+  --color-line-2: rgba(255, 236, 214, 0.18);
 
-  --color-label: #f5f5f7;
-  --color-label-2: rgba(235, 235, 245, 0.62);
-  --color-label-3: rgba(235, 235, 245, 0.34);
+  --color-label: #f3ede3;
+  --color-label-2: rgba(243, 237, 227, 0.64);
+  --color-label-3: rgba(243, 237, 227, 0.38);
 
-  --color-blue: #0a84ff;
-  --color-green: #30d158;
+  /* The lamp. */
+  --color-accent: #f0b25a;
+  --color-accent-2: #ffd08a;
+  --color-ink: #1b1309;
+
+  /* Signal colours, shared with the brain view. */
+  --color-blue: #4ea1ff;
+  --color-green: #4cd964;
   --color-orange: #ff9f0a;
-  --color-red: #ff453a;
+  --color-red: #ff5a4f;
   --color-purple: #bf5af2;
   --color-teal: #40c8e0;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --font-sans: var(--font-text), "Instrument Sans", "Helvetica Neue", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-display: var(--font-display), "Fraunces", "Iowan Old Style", "Songti SC", "Noto Serif CJK SC", Georgia, serif;
 
-  --radius-card: 12px;
+  --radius-card: 14px;
   --radius-inner: 8px;
 }
 
@@ -40,22 +47,31 @@ body {
   font-family: var(--font-sans);
   font-size: 17px;
   line-height: 1.45;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "tnum", "ss01";
 }
 
-::selection { background: var(--color-blue); color: white; }
+::selection { background: var(--color-accent); color: var(--color-ink); }
 
 /* ---- Type ------------------------------------------------------------ */
 
-.t-large { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
-.t-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.t-display, .t-large, .t-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-variation-settings: "SOFT" 40, "WONK" 1;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.t-large { font-size: clamp(2.5rem, 6vw, 4.4rem); line-height: 0.98; font-variation-settings: "SOFT" 60, "WONK" 1, "opsz" 144; }
+.t-title { font-size: 1.85rem; line-height: 1.1; }
 .t-head  { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
 .t-body  { font-size: 1.0625rem; color: var(--color-label-2); }
 .t-foot  { font-size: 0.8125rem; color: var(--color-label-2); }
-.t-cap   { font-size: 0.75rem; font-weight: 500; color: var(--color-label-3); letter-spacing: 0.01em; }
+.t-cap   { font-size: 0.75rem; font-weight: 500; color: var(--color-label-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.t-cap.num, .t-cap .num { text-transform: none; letter-spacing: 0.01em; }
 .num     { font-variant-numeric: tabular-nums; }
+.t-italic { font-family: var(--font-display); font-style: italic; font-weight: 400; font-variation-settings: "SOFT" 80, "WONK" 1; }
 
 /* ---- Surfaces ---------------------------------------------------------- */
 /* No borders anywhere: panels are a shade lighter than the ground, nothing more. */
@@ -64,12 +80,12 @@ body {
   background: var(--color-glass);
   border: 0;
   border-radius: var(--radius-card);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
 }
 
 .glass-inner {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.42);
   border: 0;
   border-radius: var(--radius-inner);
   overflow: hidden;
@@ -82,24 +98,28 @@ body {
 
 /* Popovers sit over page text, so they are nearly solid and blur what little shows. */
 .popover {
-  background: rgba(22, 22, 26, 0.985);
+  background: rgba(24, 21, 18, 0.985);
   border-radius: var(--radius-card);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* WebGL canvases render at device resolution; on screen they fill their panel exactly. */
 .glass-inner > canvas { width: 100% !important; height: 100% !important; display: block; }
 
-/* Background wash so the glass has something to blur. */
+/* The lamp over the page, and a little grain so the dark is not flat. */
 .wash {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(60% 50% at 20% 0%, rgba(10, 132, 255, 0.18), transparent 60%),
-    radial-gradient(50% 40% at 85% 10%, rgba(191, 90, 242, 0.14), transparent 60%),
-    radial-gradient(60% 60% at 50% 100%, rgba(48, 209, 88, 0.08), transparent 60%),
+    radial-gradient(55% 42% at 50% -8%, rgba(240, 178, 90, 0.20), transparent 70%),
+    radial-gradient(70% 50% at 50% 110%, rgba(240, 178, 90, 0.05), transparent 70%),
     var(--color-bg);
+}
+.wash::after {
+  content: ""; position: absolute; inset: 0; opacity: 0.045; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
 }
 
 /* ---- Controls ---------------------------------------------------------- */
@@ -108,8 +128,8 @@ body {
   font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  padding: 0.5rem 0.9rem;
+  letter-spacing: -0.005em;
+  padding: 0.5rem 0.95rem;
   border-radius: 999px;
   border: 1px solid transparent;
   background: var(--color-glass-2);
@@ -118,71 +138,84 @@ body {
   transition: background-color 0.15s, transform 0.12s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
-.btn:hover { background: rgba(255, 255, 255, 0.16); }
+.btn:hover { background: rgba(255, 236, 214, 0.16); }
 .btn:active, .btn-primary:active, .btn-danger:active, .btn-on:active { transform: scale(0.97); }
-.btn-primary { background: var(--color-blue); color: white; }
-.btn-primary:hover { background: #2a94ff; }
-.btn-danger { background: rgba(255, 69, 58, 0.16); color: var(--color-red); border-color: rgba(255, 69, 58, 0.3); }
-.btn-on { background: rgba(10, 132, 255, 0.2); color: #6fb6ff; border-color: rgba(10, 132, 255, 0.45); }
+.btn-primary { background: var(--color-accent); color: var(--color-ink); }
+.btn-primary:hover { background: var(--color-accent-2); }
+.btn-danger { background: rgba(255, 90, 79, 0.16); color: var(--color-red); }
+.btn-on { background: rgba(240, 178, 90, 0.18); color: var(--color-accent-2); }
 .btn:disabled, .btn-primary:disabled { opacity: 0.45; cursor: default; }
 
 .btn:focus-visible, .btn-primary:focus-visible, .btn-danger:focus-visible, .btn-on:focus-visible {
-  outline: 2px solid var(--color-blue); outline-offset: 2px;
+  outline: 2px solid var(--color-accent); outline-offset: 2px;
 }
 
 /* Segmented control */
-.seg { display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(255, 236, 214, 0.06); }
 .seg > button {
   flex: 1; font: inherit; font-size: 0.875rem; font-weight: 600; padding: 0.55rem 0.6rem;
   border-radius: 11px; border: 0; background: transparent; color: var(--color-label-2); cursor: pointer;
   transition: background-color 0.15s, color 0.15s; white-space: nowrap;
 }
-.seg > button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.16); color: var(--color-label); }
+.seg > button[aria-pressed="true"] { background: rgba(255, 236, 214, 0.16); color: var(--color-label); }
+.seg > button:disabled { opacity: 0.4; cursor: default; }
 .seg-sm { padding: 2px; border-radius: 10px; }
 .seg-sm > button { font-size: 0.72rem; padding: 0.28rem 0.5rem; border-radius: 8px; flex: none; }
 
 /* Form bits used by the limb panel */
 .sel {
   font: inherit; font-size: 0.8125rem; font-weight: 600; color: var(--color-label);
-  background: rgba(255, 255, 255, 0.08); border: 0; border-radius: 8px; padding: 0.4rem 0.6rem;
+  background: rgba(255, 236, 214, 0.08); border: 0; border-radius: 8px; padding: 0.4rem 0.6rem;
   appearance: none; -webkit-appearance: none; cursor: pointer;
   background-image: linear-gradient(45deg, transparent 50%, var(--color-label-2) 50%), linear-gradient(135deg, var(--color-label-2) 50%, transparent 50%);
   background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
 }
-.sel:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 1px; }
+.sel:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .rng { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; cursor: pointer; }
-.rng::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.rng::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: rgba(255, 236, 214, 0.14); }
 .rng::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; margin-top: -5px; border-radius: 50%; background: var(--color-label-2); transition: background-color 0.15s, transform 0.12s; }
 .rng:hover::-webkit-slider-thumb { transform: scale(1.15); }
-.rng-on::-webkit-slider-thumb { background: var(--color-blue); }
-.rng::-moz-range-track { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); }
+.rng-on::-webkit-slider-thumb { background: var(--color-accent); }
+.rng::-moz-range-track { height: 3px; border-radius: 2px; background: rgba(255, 236, 214, 0.14); }
 .rng::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--color-label-2); }
-.rng-on::-moz-range-thumb { background: var(--color-blue); }
+.rng-on::-moz-range-thumb { background: var(--color-accent); }
+
 /* Overlay strips on the 3D table */
 .hud {
   display: flex; flex-direction: column; gap: 2px;
   padding: 6px 10px; border-radius: 10px;
-  background: rgba(8, 8, 10, 0.55);
+  background: rgba(10, 8, 6, 0.58);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .kbd {
   font: inherit; font-size: 0.68rem; font-weight: 600; color: var(--color-label); white-space: nowrap;
-  padding: 1px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.12);
+  padding: 1px 6px; border-radius: 5px; background: rgba(255, 236, 214, 0.12);
 }
 
 /* Status pill */
-.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
-.pill-green { background: rgba(48, 209, 88, 0.16); color: var(--color-green); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; padding: 4px 10px; border-radius: 999px; }
+.pill-green { background: rgba(76, 217, 100, 0.16); color: var(--color-green); }
 .pill-orange { background: rgba(255, 159, 10, 0.16); color: var(--color-orange); }
-.pill-red { background: rgba(255, 69, 58, 0.16); color: var(--color-red); }
-.pill-gray { background: rgba(255, 255, 255, 0.1); color: var(--color-label-2); }
+.pill-red { background: rgba(255, 90, 79, 0.16); color: var(--color-red); }
+.pill-gray { background: rgba(255, 236, 214, 0.10); color: var(--color-label-2); }
+
+/* A room's card: the still fills it, the words sit on the still. */
+.still { position: relative; overflow: hidden; border-radius: var(--radius-inner); background: rgba(0, 0, 0, 0.42); }
+.still > img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.4s; filter: saturate(0.92); }
+a:hover .still > img { transform: scale(1.035); filter: saturate(1.05); }
+.still::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(7, 6, 5, 0.55) 0%, transparent 28%),
+    linear-gradient(to top, rgba(7, 6, 5, 0.72) 0%, rgba(7, 6, 5, 0.12) 45%, transparent 70%);
+}
 
 /* ---- Motion ------------------------------------------------------------ */
 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.rise { animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.rise { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .live-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-green); animation: pulse 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .rise, .live-dot { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .rise, .live-dot { animation: none; } .still > img { transition: none; } }
 
-* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 236, 214, 0.2) transparent; }

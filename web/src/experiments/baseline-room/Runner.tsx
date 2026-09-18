@@ -423,7 +423,7 @@ function Loading({ progress }: { progress: Progress | null }) {
     <div className="glass p-10">
       <p className="t-head">{label}…</p>
       <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-blue transition-[width] duration-200" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${pct}%` }} />
       </div>
       <p className="t-foot num mt-2">
         {progress && progress.total ? t("room.loading.of", { a: (progress.received / 1e6).toFixed(1), b: (progress.total / 1e6).toFixed(1) }) : ""}

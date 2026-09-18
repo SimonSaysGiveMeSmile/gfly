@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
+import { Fraunces, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+
+// Two faces: a soft, slightly wonky serif for what the site says, a plain
+// grotesk for what it measures. Both self-hosted at build time.
+const display = Fraunces({ subsets: ["latin"], axes: ["SOFT", "WONK", "opsz"], variable: "--font-display", display: "swap" });
+const sans = Instrument_Sans({ subsets: ["latin"], variable: "--font-text", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gfly.site"),
@@ -17,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="lg:h-full lg:overflow-hidden">
+    <html lang="en" className={`${display.variable} ${sans.variable} lg:h-full lg:overflow-hidden`}>
       <body className="flex min-h-full flex-col lg:h-full lg:overflow-hidden">
         <div className="wash" aria-hidden />
         <SiteHeader />

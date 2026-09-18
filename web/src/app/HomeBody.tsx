@@ -16,37 +16,38 @@ export function HomeBody() {
   const { t } = useT();
   return (
     <div className="mx-auto max-w-[1400px] px-5 lg:px-10 flex flex-col lg:h-full lg:overflow-hidden">
-      <section className="grid gap-6 py-8 lg:grid-cols-12 lg:py-12 flex-shrink-0">
-        <div className="lg:col-span-7">
-          <p className="t-cap rise">{t("home.kicker")}</p>
-          <h1 className="t-large rise mt-4" style={{ animationDelay: "60ms" }}>
-            {t("home.title1")}<br />{t("home.title2")}
-          </h1>
-          <p className="t-body rise mt-4 max-w-xl" style={{ animationDelay: "120ms" }}>{t("home.lead")}</p>
-          <div className="rise mt-6 flex flex-wrap gap-3" style={{ animationDelay: "180ms" }}>
-            <Link href="/lab/baseline-room" className="btn-primary">{t("home.openRoom")}</Link>
-            <Link href="/feasibility" className="btn">{t("home.how")}</Link>
+      <section className="py-10 lg:py-16 flex-shrink-0">
+        <p className="t-cap rise">{t("home.kicker")}</p>
+        <h1 className="t-large rise mt-5 max-w-[14ch]" style={{ animationDelay: "60ms" }}>
+          {t("home.title1")}<br />{t("home.title2")}
+        </h1>
+        <div className="mt-7 grid gap-8 lg:grid-cols-12 lg:items-end">
+          <div className="lg:col-span-6">
+            <p className="t-body rise max-w-xl" style={{ animationDelay: "120ms" }}>{t("home.lead")}</p>
+            <div className="rise mt-6 flex flex-wrap gap-3" style={{ animationDelay: "180ms" }}>
+              <Link href="/lab/baseline-room" className="btn-primary">{t("home.openRoom")}</Link>
+              <Link href="/feasibility" className="btn">{t("home.how")}</Link>
+            </div>
           </div>
-        </div>
-        <div className="lg:col-span-5">
-          <div className="glass rise p-4" style={{ animationDelay: "240ms" }}>
-            <dl className="space-y-1">
-              {FACTS.map((f) => (
-                <div key={f.k} className="flex items-baseline justify-between py-3">
-                  <dt className="t-foot">{t(f.k)}</dt>
-                  <dd className="num text-2xl font-semibold">{f.v}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="t-foot mt-3">{t("home.factsNote")}</p>
-          </div>
+          {/* The numbers, as a strip: no card, just a rule of light under them. */}
+          <dl className="rise grid grid-cols-2 gap-x-8 gap-y-6 lg:col-span-6 lg:pl-8" style={{ animationDelay: "240ms" }}>
+            {FACTS.map((f) => (
+              <div key={f.k}>
+                <dd className="num t-display whitespace-nowrap text-[1.9rem] leading-none lg:text-[2.3rem]">{f.v}</dd>
+                <dt className="t-cap mt-2">{t(f.k)}</dt>
+              </div>
+            ))}
+            <p className="t-foot col-span-2 max-w-2xl">{t("home.factsNote")}</p>
+          </dl>
         </div>
       </section>
 
       <section className="pb-12 lg:flex-1 lg:overflow-y-auto lg:min-h-0">
-        <h2 className="t-title">{t("home.experiments")}</h2>
-        <p className="t-body mt-2">{t("home.experimentsLead")}</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 className="t-title">{t("home.experiments")}</h2>
+          <p className="t-italic text-[1.15rem] text-label-2">{t("home.experimentsLead")}</p>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRODUCTS.map((p, i) => <ProductCard key={p.slug} product={p} index={i} />)}
         </div>
       </section>

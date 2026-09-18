@@ -5,7 +5,10 @@ import { BODIES } from "@/lib/three/body";
 import { setBodyKind, useBodyKind } from "@/lib/sim/body";
 import { useT, type Key } from "@/lib/i18n";
 
-/** Fly / dog / cat / bird, for every experiment at once. */
+/**
+ * Fly / dog / cat / bird, for every experiment at once. The menu is a small
+ * lobby: each body stands on its ring, as captured from The Room's body view.
+ */
 export function BodyPicker() {
   const kind = useBodyKind();
   const [open, setOpen] = useState(false);
@@ -19,18 +22,30 @@ export function BodyPicker() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="popover absolute right-0 z-50 mt-2 w-[15rem] p-2">
-            {BODIES.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => { setBodyKind(b.id); setOpen(false); }}
-                className={`block w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/10 ${b.id === kind ? "bg-white/10" : ""}`}
-              >
-                <span className="t-head text-sm">{t(b.labelKey as Key)}</span>
-                <span className="t-cap block">{t(`${b.labelKey}.note` as Key)}</span>
-              </button>
-            ))}
-            <p className="t-cap px-3 pt-2 pb-1">{t("body.applies")}</p>
+          <div className="popover absolute right-0 z-50 mt-2 w-[min(92vw,38rem)] p-2">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {BODIES.map((b) => {
+                const on = b.id === kind;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => { setBodyKind(b.id); setOpen(false); }}
+                    aria-pressed={on}
+                    className={`group flex flex-col rounded-[10px] p-2 text-left transition-colors hover:bg-white/8 ${on ? "bg-white/10" : ""}`}
+                  >
+                    <span className={`glass-inner aspect-square w-full ${on ? "bg-accent/12" : ""}`} style={on ? { background: "rgba(240,178,90,0.14)" } : undefined}>
+                      <img src={`/previews/body-${b.id}.png`} alt="" className="h-[88%] w-[88%] object-contain transition-transform duration-500 group-hover:scale-105" />
+                    </span>
+                    <span className="mt-2 flex items-baseline justify-between px-0.5">
+                      <span className="t-head text-sm">{t(b.labelKey as Key)}</span>
+                      {on && <span className="t-cap text-accent">●</span>}
+                    </span>
+                    <span className="t-foot mt-0.5 px-0.5 text-[12px] leading-snug">{t(`${b.labelKey}.note` as Key)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="t-foot px-2 pt-2 pb-1 text-[12px]">{t("body.applies")}</p>
           </div>
         </>
       )}

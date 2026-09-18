@@ -14,7 +14,7 @@ export function AboutBody() {
         <p>{t("about.p2")}</p>
         <p>
           {t("about.p3")}{" "}
-          <Link href="/feasibility" className="text-blue">{t("about.p3.link")}</Link>
+          <Link href="/feasibility" className="text-accent underline decoration-accent/40 underline-offset-4">{t("about.p3.link")}</Link>
         </p>
 
         <h2 className="t-title pt-3 text-label">{t("about.real")}</h2>
