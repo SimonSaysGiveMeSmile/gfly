@@ -10,14 +10,14 @@ export function LangPicker() {
   useEffect(() => { document.documentElement.lang = lang === "zh" ? "zh-CN" : lang; }, [lang]);
   const cur = LANGS.find((l) => l.id === lang)!;
   return (
-    <div className="relative">
+    <div className="static md:relative">
       <button onClick={() => setOpen(!open)} className="btn text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }} aria-expanded={open} aria-label="Language">
         {cur.id === "en" ? "EN" : cur.id === "zh" ? "中文" : "AZ"}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="popover absolute right-0 z-50 mt-2 w-[11rem] p-2">
+          <div className="popover absolute right-2 top-full z-50 mt-1 w-[11rem] p-2 md:right-0 md:top-auto md:mt-2">
             {LANGS.map((l) => (
               <button
                 key={l.id}

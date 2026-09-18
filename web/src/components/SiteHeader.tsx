@@ -19,7 +19,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 lg:px-4 lg:pt-4" style={{ isolation: "isolate" }}>
-      <div className="bar mx-auto flex max-w-[1400px] items-center gap-1 px-2 py-1.5 lg:gap-2 lg:px-3 lg:py-2" style={{ borderRadius: 999 }}>
+      <div className="bar relative mx-auto flex max-w-[1400px] items-center gap-1 px-2 py-1.5 lg:gap-2 lg:px-3 lg:py-2" style={{ borderRadius: 999 }}>
         <Link href="/" className="t-display px-3 py-1 text-[1.25rem] leading-none">GFly</Link>
         <nav className="ml-auto flex items-center gap-0.5 lg:gap-1">
           {NAV.map((n) => (
@@ -34,14 +34,14 @@ export function SiteHeader() {
             <img src="/icons/github.png" alt="" className={ICON} />{t("nav.github")}
           </a>
           {/* Phones: the pages live in a menu so the brain and language pickers keep their room. */}
-          <div className="relative md:hidden">
+          <div className="static md:hidden">
             <button onClick={() => setOpen(!open)} className="btn text-[13px] px-2.5" aria-expanded={open} aria-label={t("nav.menu")}>
               <span aria-hidden className="inline-block leading-none" style={{ fontSize: 16 }}>☰</span>
             </button>
             {open && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-                <div className="popover absolute right-0 z-50 mt-2 w-[12rem] p-2">
+                <div className="popover absolute right-2 top-full z-50 mt-1 w-[12rem] p-2">
                   {NAV.map((n) => (
                     <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 t-head text-sm hover:bg-white/10"><img src={n.icon} alt="" className={ICON} />{t(n.key)}</Link>
                   ))}

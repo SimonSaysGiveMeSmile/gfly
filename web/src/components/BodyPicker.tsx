@@ -15,14 +15,14 @@ export function BodyPicker() {
   const { t } = useT();
   const cur = BODIES.find((b) => b.id === kind)!;
   return (
-    <div className="relative">
+    <div className="static md:relative">
       <button onClick={() => setOpen(!open)} className="btn text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }} aria-expanded={open}>
         <span className="hidden sm:inline">{t("nav.body")}: </span>{t(cur.labelKey as Key)}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="popover absolute right-0 z-50 mt-2 w-[min(92vw,38rem)] p-2">
+          <div className="popover absolute right-2 top-full z-50 mt-1 w-[min(100%,38rem)] p-2 md:right-0 md:top-auto md:mt-2 md:w-[min(92vw,38rem)]">
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
               {BODIES.map((b) => {
                 const on = b.id === kind;

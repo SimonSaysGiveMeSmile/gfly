@@ -13,14 +13,14 @@ export function BrainPicker() {
   const name = (id: string) => t(`tier.${id}` as Key);
   const note = (id: string) => t(`tier.${id}.note` as Key);
   return (
-    <div className="relative">
+    <div className="static md:relative">
       <button onClick={() => setOpen(!open)} className="btn text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }} aria-expanded={open}>
         <img src="/icons/brain.png" alt="" className="mr-1.5 inline-block h-[18px] w-[18px] rounded-[5px] align-[-4px]" /><span className="hidden sm:inline">{t("nav.brain")}: </span>{name(cur.id)}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="popover absolute right-0 z-50 mt-2 w-[19rem] p-2">
+          <div className="popover absolute right-2 top-full z-50 mt-1 w-[min(100%,19rem)] p-2 md:right-0 md:top-auto md:mt-2 md:w-[19rem]">
             {TIERS.map((x) => (
               <button
                 key={x.tier}
