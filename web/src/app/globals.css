@@ -97,6 +97,15 @@ body {
 
 .divide-line > * + * { border-color: var(--color-line); }
 
+/* The header bar: the page scrolls under it, so it is nearly solid. */
+.bar {
+  background: rgba(14, 12, 10, 0.84);
+  border: 0;
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
 /* Popovers sit over page text, so they are nearly solid and blur what little shows. */
 .popover {
   background: rgba(24, 21, 18, 0.985);
