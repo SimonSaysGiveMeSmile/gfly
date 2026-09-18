@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
 
+// Connections and synapse shares from the release's significant-only weight table;
+// raw is 6 bytes per connection plus the offsets, shipped is after gzip -9.
 const THRESHOLDS = [
-  { t: "1+", edges: "25,568,639", pct: "100%", gz: "75 MB", ship: true },
-  { t: "5+", edges: "6,236,426", pct: "72%", gz: "20 MB", ship: true },
-  { t: "10+", edges: "2,749,558", pct: "54%", gz: "9 MB", ship: true },
-  { t: "20+", edges: "1,060,450", pct: "36%", gz: "3.5 MB", ship: false },
+  { t: "1+", edges: "25,568,639", pct: "100%", raw: "154 MB", gz: "75 MB", ship: true },
+  { t: "5+", edges: "6,236,426", pct: "72%", raw: "38 MB", gz: "20 MB", ship: true },
+  { t: "10+", edges: "2,749,558", pct: "54%", raw: "17 MB", gz: "9 MB", ship: true },
+  { t: "20+", edges: "1,060,450", pct: "36%", raw: "7 MB", gz: "3.5 MB", ship: false },
 ];
 const PERF = [
   { dt: "1 ms", rt: "0.95", best: true },
@@ -26,9 +28,16 @@ export function HowBody() {
       <Section title={t("how.s1.title")}><p>{t("how.s1.body")}</p></Section>
 
       <Section title={t("how.s2.title")}>
+        <p>{t("how.s2.lead")}</p>
+        <ol className="list-decimal space-y-3 pl-5">
+          {(["a", "b", "c", "d"] as const).map((k) => (
+            <li key={k}><b>{t(`how.s2.${k}.b`)}</b> {t(`how.s2.${k}`)}</li>
+          ))}
+        </ol>
+        <p><b>{t("how.s2.check.b")}</b> {t("how.s2.check")}</p>
         <p>{t("how.s2.body")}</p>
         <Table head={list("how.s2.head")} rows={THRESHOLDS.map((r) => [
-          <b key="a" className={r.ship ? "text-green" : ""}>{r.t}</b>, r.edges, r.pct, r.gz,
+          <b key="a" className={r.ship ? "text-green" : ""}>{r.t}</b>, r.edges, r.pct, r.raw, r.gz,
         ])} />
         <p>{t("how.s2.after")}</p>
       </Section>
