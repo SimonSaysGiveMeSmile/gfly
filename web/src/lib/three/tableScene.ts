@@ -33,7 +33,7 @@ export interface Placed { pos: THREE.Vector3; quat: THREE.Quaternion }
 
 const SETS = {
   tea: { probe: "garden" as Probe, tableTop: 0.4986 * 1.35, stoolTop: 0.63, stoolOut: 0.68, exposure: 0.95, lamp: 0xffd9a8, lampPower: 12, backdrop: 0.5, backRot: Math.PI },
-  saloon: { probe: "saloon" as Probe, tableTop: 1.004, stoolTop: 0.75, stoolOut: 0.78, exposure: 0.9, lamp: 0xffc178, lampPower: 16, backdrop: 0.6, backRot: Math.PI * 0.5 },
+  saloon: { probe: "saloon" as Probe, tableTop: 1.004, stoolTop: 0.96, stoolOut: 0.78, exposure: 0.9, lamp: 0xffc178, lampPower: 16, backdrop: 0.16, backRot: Math.PI * 0.5 },
 };
 
 export const CREATURE_SCALE = 0.22;    // a 22 cm creature. Real flies are 3 mm.
@@ -177,7 +177,8 @@ export class TableScene {
     } else {
       add("/assets/models/round_wooden_table_01/round_wooden_table_01.gltf", (o) => scene.add(o));
       add("/assets/models/bar_chair_round_01/bar_chair_round_01.gltf", (o) => {
-        for (const s of seated) { const st = o.clone(); st.position.set(0, 0, 0.82); st.rotation.y = Math.PI; this.seats[s].add(st); }
+        // Tall stools: the seat has to clear a metre-high table for a 22 cm creature to be seen over it.
+        for (const s of seated) { const st = o.clone(); st.position.set(0, 0, 0.82); st.rotation.y = Math.PI; st.scale.set(1.15, set.stoolTop / 0.75, 1.15); this.seats[s].add(st); }
       });
       add("/assets/models/wine_barrel_01/wine_barrel_01.gltf", (o) => {
         const a = o.clone(); a.position.set(-2.2, 0, -2.4); scene.add(a);
@@ -190,8 +191,9 @@ export class TableScene {
         const glow = new THREE.PointLight(0xffb060, 3, 4, 2); glow.position.set(2.6, 0.872 + 0.5, -2.3); scene.add(glow);
       });
       add("/assets/models/wooden_lantern_01/wooden_lantern_01.gltf", (o) => {
-        o.position.set(0, this.tableTop, 0); o.scale.setScalar(0.7); scene.add(o);
-        const glow = new THREE.PointLight(0xffb060, 2.5, 3, 2); glow.position.set(0, this.tableTop + 0.2, 0); scene.add(glow);
+        // Off to one side so it lights the table without hiding whoever sits across from you.
+        o.position.set(-0.42, this.tableTop, -0.3); o.scale.setScalar(0.55); scene.add(o);
+        const glow = new THREE.PointLight(0xffb060, 2.5, 3, 2); glow.position.set(-0.42, this.tableTop + 0.18, -0.3); scene.add(glow);
       });
     }
 

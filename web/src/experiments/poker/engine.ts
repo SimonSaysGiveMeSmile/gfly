@@ -32,6 +32,9 @@ export interface GameState {
   currentBet: number;
   status: "active" | "won";
   winner: number | null;
+  /** Who has acted since the last raise this street; a round ends when everyone still in has. */
+  acted: boolean[];
+  blind: number;
 }
 
 const RANKS: Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
@@ -57,33 +60,51 @@ function createDeck(): Card[] {
 /**
  * Create new game
  */
-export function createGame(numPlayers = 4, startChips = 1000): GameState {
+export function createGame(numPlayers = 4, startChips = 1000, carry?: { chips: number[]; dealer: number }, blind = 10): GameState {
   const deck = createDeck();
   const players: Player[] = [];
 
   for (let i = 0; i < numPlayers; i++) {
+    const chips = carry ? carry.chips[i] : startChips;
     players.push({
       seat: i,
       hand: [deck.pop()!, deck.pop()!],
-      chips: startChips,
+      chips,
       bet: 0,
-      folded: false,
+      folded: chips <= 0,
       allIn: false,
     });
   }
 
-  return {
+  const game: GameState = {
     players,
     deck,
     community: [],
     pot: 0,
     phase: "preflop",
-    dealer: 0,
-    currentPlayer: 1,
+    dealer: carry ? carry.dealer % numPlayers : 0,
+    currentPlayer: 0,
     currentBet: 0,
     status: "active",
     winner: null,
+    acted: players.map(() => false),
+    blind,
   };
+
+  // Blinds: the two seats after the button; the one after them opens.
+  const n = numPlayers;
+  const put = (seat: number, amount: number) => {
+    const p = players[seat];
+    const a = Math.min(amount, p.chips);
+    p.bet += a; p.chips -= a; game.pot += a;
+    if (p.chips === 0) p.allIn = true;
+  };
+  put((game.dealer + 1) % n, blind);
+  put((game.dealer + 2) % n, blind * 2);
+  game.currentBet = blind * 2;
+  game.currentPlayer = (game.dealer + 3) % n;
+  while (players[game.currentPlayer].folded || players[game.currentPlayer].allIn) game.currentPlayer = (game.currentPlayer + 1) % n;
+  return game;
 }
 
 /**
@@ -199,7 +220,10 @@ export function applyAction(game: GameState, action: "fold" | "call" | "raise", 
     player.bet += amount;
     player.chips -= amount;
     game.pot += amount;
-    game.currentBet = player.bet;
+    if (player.bet > game.currentBet) {
+      game.currentBet = player.bet;
+      game.acted = game.players.map(() => false);     // a raise reopens the action for everyone else
+    }
     if (player.chips === 0) player.allIn = true;
   }
 
@@ -210,10 +234,16 @@ export function applyAction(game: GameState, action: "fold" | "call" | "raise", 
  * Advance to next player
  */
 function advancePlayer(game: GameState): void {
-  const activePlayers = game.players.filter(p => !p.folded && !p.allIn);
-  const allBetsEqual = activePlayers.every(p => p.bet === game.currentBet);
-
-  if (activePlayers.length <= 1 || (allBetsEqual && activePlayers.length > 0)) {
+  game.acted[game.currentPlayer] = true;
+  const live = game.players.filter(p => !p.folded);
+  if (live.length <= 1) {                              // everyone else folded: the pot goes over now
+    game.phase = "showdown";
+    determineWinner(game);
+    return;
+  }
+  const active = live.filter(p => !p.allIn);
+  const settled = active.every(p => game.acted[p.seat] && p.bet === game.currentBet);
+  if (active.length === 0 || settled) {
     advancePhase(game);
     return;
   }
@@ -231,6 +261,7 @@ function advancePhase(game: GameState): void {
     player.bet = 0;
   }
   game.currentBet = 0;
+  game.acted = game.players.map(() => false);
 
   if (game.phase === "preflop") {
     game.community.push(game.deck.pop()!, game.deck.pop()!, game.deck.pop()!);
@@ -249,7 +280,10 @@ function advancePhase(game: GameState): void {
     determineWinner(game);
   }
 
-  while (game.phase !== "showdown" && (game.players[game.currentPlayer].folded || game.players[game.currentPlayer].allIn)) {
+  if (game.phase === "showdown" || game.phase === "over") return;
+  // Fewer than two players can still bet: run the remaining streets out.
+  if (game.players.filter(p => !p.folded && !p.allIn).length < 2) { advancePhase(game); return; }
+  while (game.players[game.currentPlayer].folded || game.players[game.currentPlayer].allIn) {
     game.currentPlayer = (game.currentPlayer + 1) % game.players.length;
   }
 }

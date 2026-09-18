@@ -1,344 +1,317 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useT } from "@/lib/i18n";
+/**
+ * Hold'em at the saloon table. You are the south seat; three flies in
+ * cowboy hats take the others. The cards are the CC0 English-pattern deck
+ * from Wikimedia Commons drawn onto card-sized slabs; the chips are Poly
+ * Haven's poker_chips. Everything on the felt is laid out from the game
+ * state and eases into place, so deals and reveals animate.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { TableScene, type Preset } from "@/lib/three/tableScene";
+import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
-import { dict } from "./dict";
 import { useMedia } from "@/lib/useMedia";
 import { useBodyKind } from "@/lib/sim/body";
-import { TableScene } from "@/lib/three/tableScene";
-import { FlyBrains, type BrainsApi, TABLE_SEATS } from "@/experiments/shared/FlyBrains";
-import { brainChoose, brainTeach, codeOf, type Candidate } from "@/experiments/shared/brainPlay";
-import * as THREE from "three";
-import {
-  createGame,
-  applyAction,
-  getLegalActions,
-  evaluateHand,
-  getHandName,
-  cardToString,
-  type GameState,
-} from "./engine";
-import { getBestActions, type ScoredAction } from "./bot";
+import { FlyBrains, type BrainsApi } from "../shared/FlyBrains";
+import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
+import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
+import { ease, imageTexture } from "../shared/tableAssets";
+import { dict, type PokerKey } from "./dict";
+import { applyAction, createGame, evaluateHand, getLegalActions, type Card, type GameState } from "./engine";
+import { getBestActions } from "./bot";
 
-/**
- * Texas Hold'em Poker table
- */
+const ME = 0;
+const CARD_W = 0.068, CARD_H = 0.095, CARD_T = 0.0016;
+const SUIT = { hearts: "H", diamonds: "D", clubs: "C", spades: "S" } as const;
+const cardKey = (c: Card) => `${c.rank}${SUIT[c.suit]}`;
+
+type View = "seat" | "top";
+const PRESETS: Record<View, Preset> = {
+  seat: { pos: [0, 0.42, 0.98], look: [0, -0.02, -0.12], fov: 62 },
+  top: { pos: [0, 0.95, 0.3], look: [0, 0, -0.02], fov: 52 },
+};
+
+/** Which fly said what this hand, for the lesson at showdown. */
+type Said = Record<number, number[]>;
+
+class Store {
+  game: GameState | null = null;
+  hand = 0;
+  actor: number | null = null;
+  version = 0;
+  bump(actor: number | null = null) { this.actor = actor; this.version++; }
+  deal(game: GameState) { this.game = game; this.hand++; }
+}
+
+const FACE_UP = new THREE.Quaternion();
+const FACE_DOWN = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+
+function PokerView({ store, view, body, className }: { store: Store; view: View; body: BodyKind; className?: string }) {
+  const host = useRef<HTMLDivElement>(null);
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const ts = new TableScene(el, {
+      body, set: "saloon", hat: "cowboy", presets: PRESETS, view: viewRef.current,
+      mat: { shape: "round", size: 1.16, texture: "velvet", color: 0x2f5a3a },
+    });
+    const { scene, tableTop, renderer } = ts;
+    let disposed = false;
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // The deck: one geometry, a back everyone shares, faces made as they are needed.
+    const geo = new THREE.BoxGeometry(CARD_W, CARD_T, CARD_H);
+    const edge = new THREE.MeshStandardMaterial({ color: 0xf4efe4, roughness: 0.8 });
+    const back = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+    imageTexture("/assets/cards/back.svg", 360, 540, renderer).then((t) => { if (disposed) { t.dispose(); return; } back.map = t; back.needsUpdate = true; }).catch((e) => console.error(e));
+    const faces = new Map<string, THREE.MeshStandardMaterial>();
+    const face = (c: Card): THREE.MeshStandardMaterial => {
+      const k = cardKey(c);
+      let m = faces.get(k);
+      if (!m) {
+        m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+        faces.set(k, m);
+        imageTexture(`/assets/cards/${k}.svg`, 360, 540, renderer, (ctx) => { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 360, 540); })
+          .then((t) => { if (disposed) { t.dispose(); return; } m!.map = t; m!.needsUpdate = true; }).catch((e) => console.error(e));
+      }
+      return m;
+    };
+    // Box groups: +x -x +y(face) -y(back) +z -z.
+    const cardMesh = (c: Card) => {
+      const m = new THREE.Mesh(geo, [edge, edge, face(c), back, edge, edge]);
+      m.castShadow = true; m.receiveShadow = true;
+      return m;
+    };
+
+    // Chips: the Poly Haven pile, one per seat scaled to its stack.
+    const chips: THREE.Object3D[] = [];
+    let pile: THREE.Object3D | null = null;
+    new GLTFLoader().loadAsync("/assets/models/poker_chips/poker_chips.glb").then((g) => {
+      if (disposed) return;
+      g.scene.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      const box = new THREE.Box3().setFromObject(g.scene);
+      const size = box.getSize(new THREE.Vector3());
+      g.scene.position.sub(box.getCenter(new THREE.Vector3())).add(new THREE.Vector3(0, size.y / 2, 0));
+      pile = new THREE.Group().add(g.scene);
+      pile.scale.setScalar(0.11 / Math.max(size.x, size.z));
+      for (let s = 0; s < 4; s++) {
+        const p = pile.clone();
+        const at = ts.place(s, new THREE.Vector3(-0.19, tableTop + 0.0075, 0.36), new THREE.Quaternion());
+        p.position.copy(at.pos); p.quaternion.copy(at.quat);
+        group.add(p); chips.push(p);
+      }
+      seen = -1;
+    }).catch((e) => console.error(e));
+
+    const meshes = new Map<string, THREE.Mesh>();          // by card
+    const targets = new Map<THREE.Object3D, { pos: THREE.Vector3; quat: THREE.Quaternion }>();
+    let seen = -1;
+    let lastHand = -1;
+
+    const layout = (game: GameState) => {
+      if (store.hand !== lastHand) {                       // a new deal: sweep the old cards away
+        lastHand = store.hand;
+        for (const m of meshes.values()) { group.remove(m); }
+        meshes.clear();
+      }
+      targets.clear();
+      const y = tableTop + 0.0075;                          // on top of the felt
+      const put = (c: Card, seat: number, local: THREE.Vector3, up: boolean, dy = 0) => {
+        const k = cardKey(c);
+        let m = meshes.get(k);
+        const placed = ts.place(seat, local.clone().setY(y + dy), up ? FACE_UP : FACE_DOWN);
+        if (!m) {
+          m = cardMesh(c);
+          const from = ts.place(seat, new THREE.Vector3(0, y + 0.02, 0), FACE_DOWN);   // dealt from the middle
+          m.position.copy(from.pos); m.quaternion.copy(from.quat);
+          group.add(m); meshes.set(k, m);
+        }
+        targets.set(m, placed);
+      };
+      const over = game.phase === "showdown" || game.phase === "over";
+      for (const p of game.players) {
+        const s = p.seat;
+        const up = s === ME || (over && !p.folded);
+        const tuck = p.folded ? 0.06 : 0;                  // a folded hand is pushed toward the middle, face down
+        p.hand.forEach((c, i) => put(c, s, new THREE.Vector3((i - 0.5) * (CARD_W + 0.006) + (s === ME ? 0 : 0), 0, 0.33 - tuck), up && !p.folded, i * CARD_T));
+      }
+      game.community.forEach((c, i) => put(c, 0, new THREE.Vector3((i - 2) * (CARD_W + 0.008), 0, 0.15), true));   // in front of the lantern
+      for (let s = 0; s < 4; s++) {
+        const c = chips[s];
+        if (!c) continue;
+        const stack = game.players[s].chips;
+        c.visible = stack > 0;
+        if (pile) c.scale.setScalar(pile.scale.x * (0.55 + 0.45 * Math.min(1, stack / 1500)));
+      }
+    };
+
+    ts.onFrame = (dt) => {
+      ts.view = viewRef.current;
+      if (store.game && store.version !== seen) {
+        seen = store.version;
+        layout(store.game);
+        if (store.actor !== null) ts.reach(store.actor);
+      }
+      ease([...meshes.values()].map((m) => [m, targets.get(m)]), dt, 7);
+    };
+    // Where things are on screen, for checks from outside (tests, the console).
+    (window as unknown as { __gflyPoker?: unknown }).__gflyPoker = { creatures: () => ts.creatures.map((c) => ({ seat: c.seat, ...ts.toScreen(c.body.root.getWorldPosition(new THREE.Vector3())) })) };
+
+    return () => {
+      disposed = true;
+      for (const m of faces.values()) { m.map?.dispose(); m.dispose(); }
+      ts.dispose();
+    };
+  }, [store, body]);
+
+  return <div ref={host} className={className} />;
+}
+
 export function PokerTable() {
-  const { t, lang } = useT();
   const { lt } = useLocalT(dict);
   const wide = useMedia("(min-width: 1024px)");
   const bodyKind = useBodyKind();
+  const store = useMemo(() => new Store(), []);
+  const [, setTick] = useState(0);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [view, setView] = useState<View>("seat");
+  const [brains, setBrains] = useState(false);
+  const brainsApi = useRef<BrainsApi | null>(null);
+  const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
+  const labels = useRef(new Map<number, string>());
+  const said = useRef<Said>({});
+  const taught = useRef(-1);
+  const timer = useRef<number | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
-  const [game, setGame] = useState<GameState>(() => createGame(4, 1000));
-  const [thinking, setThinking] = useState(false);
-  const [raiseAmount, setRaiseAmount] = useState(50);
-  const brainsRef = useRef<BrainsApi | null>(null);
+  const bump = useCallback((actor: number | null = null) => { store.bump(actor); setTick((t) => t + 1); }, [store]);
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
-  const ts = useRef<TableScene | null>(null);
-  const cardMeshes = useRef<Map<string, THREE.Mesh>>(new Map());
+  /** A fresh deal. Chips and the button carry over from the last hand. */
+  const deal = useCallback((prev: GameState | null) => {
+    const g = createGame(4, 1000, prev ? { chips: prev.players.map((p) => p.chips), dealer: prev.dealer + 1 } : undefined);
+    store.deal(g);
+    said.current = {};
+    setGame(g);
+    bump();
+  }, [store, bump]);
 
-  const humanSeat = 0;
+  const act = useCallback((seat: number, action: "fold" | "call" | "raise", amount = 0) => {
+    const g = store.game;
+    if (!g || g.status !== "active" || g.currentPlayer !== seat) return;
+    applyAction(g, action, amount);
+    bump(seat);
+  }, [store, bump]);
 
+  // The flies act in turn; at showdown their choices become lessons.
+  const version = store.version;
   useEffect(() => {
-    if (!started || !containerRef.current) return;
-
-    const scene = new TableScene(containerRef.current, {
-      body: bodyKind,
-      set: "saloon",
-      mat: { shape: "round", size: 1.2, texture: "velvet", color: 0x2d5016 },
-      hat: "cowboy",
-      presets: {
-        main: { pos: [0, 0.5, 1.2], look: [0, 0, 0], fov: 50 },
-      },
-      view: "main",
-      seated: [0, 1, 2, 3],
-    });
-
-    ts.current = scene;
-    createCardMeshes(scene);
-    layoutCards(game);
-
-    return () => {
-      scene.dispose();
-      ts.current = null;
-    };
-  }, [started, bodyKind]);
-
-  useEffect(() => {
-    if (game.status !== "active" || game.currentPlayer === humanSeat || thinking) return;
-
-    const timer = setTimeout(() => {
-      botTurn(game);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [game, thinking]);
-
-  const createCardMeshes = (scene: TableScene) => {
-    const tableTop = scene.tableTop;
-    const cardWidth = 0.1;
-    const cardHeight = 0.14;
-    const cardThickness = 0.01;
-
-    const geom = new THREE.BoxGeometry(cardWidth, cardThickness, cardHeight);
-    const backMat = new THREE.MeshStandardMaterial({ color: 0xcc3333 });
-
-    for (let seat = 0; seat < 4; seat++) {
-      for (let i = 0; i < 2; i++) {
-        const key = `player${seat}-${i}`;
-        const mesh = new THREE.Mesh(geom, backMat.clone());
-        mesh.castShadow = true;
-        mesh.visible = false;
-        scene.scene.add(mesh);
-        cardMeshes.current.set(key, mesh);
-      }
-    }
-
-    for (let i = 0; i < 5; i++) {
-      const key = `community-${i}`;
-      const frontMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-      const mesh = new THREE.Mesh(geom, frontMat.clone());
-      mesh.castShadow = true;
-      mesh.visible = false;
-      scene.scene.add(mesh);
-      cardMeshes.current.set(key, mesh);
-    }
-  };
-
-  const layoutCards = (state: GameState) => {
-    const scene = ts.current;
-    if (!scene) return;
-
-    const tableTop = scene.tableTop;
-    const cardSpacing = 0.12;
-
-    for (let seat = 0; seat < 4; seat++) {
-      const player = state.players[seat];
-      if (!player || player.folded) {
-        for (let i = 0; i < 2; i++) {
-          const mesh = cardMeshes.current.get(`player${seat}-${i}`);
-          if (mesh) mesh.visible = false;
-        }
-        continue;
-      }
-
-      for (let i = 0; i < 2; i++) {
-        const mesh = cardMeshes.current.get(`player${seat}-${i}`);
-        if (!mesh) continue;
-
-        mesh.visible = true;
-
-        const seatGroup = scene.seats[seat];
-        const local = new THREE.Vector3((i - 0.5) * cardSpacing, 0, -0.3);
-        const world = seatGroup.localToWorld(local.clone());
-
-        mesh.position.copy(world);
-        mesh.position.y = tableTop + 0.02;
-        mesh.rotation.y = Math.PI * seat / 2;
-
-        if (seat === humanSeat) {
-          (mesh.material as THREE.MeshStandardMaterial).color.setHex(0xffffff);
+    const g = store.game;
+    if (!g) return;
+    const api = brainsApi.current;
+    if (g.status !== "active") {
+      if (api && taught.current !== store.hand) {
+        taught.current = store.hand;
+        for (const [s, codes] of Object.entries(said.current)) {
+          const seat = Number(s);
+          if (seat === ME || codes.length === 0 || !api.ready(seat)) continue;
+          brainTeach(api, seat, codes, seat === g.winner ? 1 : -1);
         }
       }
-    }
-
-    for (let i = 0; i < 5; i++) {
-      const mesh = cardMeshes.current.get(`community-${i}`);
-      if (!mesh) continue;
-
-      if (i < state.community.length) {
-        mesh.visible = true;
-        mesh.position.set((i - 2) * cardSpacing, tableTop + 0.02, 0);
-        mesh.rotation.set(0, 0, 0);
-      } else {
-        mesh.visible = false;
-      }
-    }
-  };
-
-  const handleAction = async (action: "fold" | "call" | "raise") => {
-    if (game.status !== "active" || game.currentPlayer !== humanSeat || thinking) return;
-
-    const newGame = JSON.parse(JSON.stringify(game)) as GameState;
-    applyAction(newGame, action, action === "raise" ? raiseAmount : 0);
-    setGame(newGame);
-    layoutCards(newGame);
-
-    if (brainsRef.current) {
-      const code = codeOf(action + (action === "raise" ? raiseAmount : ""));
-      await brainTeach(brainsRef.current, humanSeat, [code], 1);
-    }
-  };
-
-  const botTurn = async (currentGame: GameState) => {
-    setThinking(true);
-
-    const botSeat = currentGame.currentPlayer;
-    const candidates = getBestActions(currentGame, botSeat);
-
-    if (candidates.length === 0) {
-      setThinking(false);
       return;
     }
+    const seat = g.currentPlayer;
+    if (seat === ME) return;
+    let cancelled = false;
+    const run = async () => {
+      const cands = getBestActions(g, seat);
+      if (cands.length === 0) { act(seat, "fold"); return; }
+      if (!api?.ready(seat)) { act(seat, cands[0].action, cands[0].raiseAmount ?? 0); return; }
+      const code = (a: (typeof cands)[number]) => { const c = codeOf(`${a.action}${a.raiseAmount ?? ""}`); labels.current.set(c, a.action); return c; };
+      const r = await brainChoose(api, seat, cands.map((c) => ({ item: c, code: code(c) })), "like");
+      if (cancelled || store.game !== g || g.currentPlayer !== seat) return;
+      const chosen = r?.item ?? cands[0];
+      if (r) (said.current[seat] ??= []).push(code(chosen));
+      act(seat, chosen.action, chosen.raiseAmount ?? 0);
+    };
+    timer.current = window.setTimeout(() => { timer.current = null; run().catch(() => act(seat, "fold")); }, 900);
+    return () => { cancelled = true; if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
 
-    let chosen = candidates[0];
+  if (!game) return <Lobby title={lt("lobby.title")} body={lt("lobby.body")} action={lt("lobby.sit")} onStart={() => deal(null)} />;
 
-    if (brainsRef.current) {
-      const cands: Candidate<ScoredAction>[] = candidates.map(c => ({
-        item: c,
-        code: codeOf(c.action + (c.raiseAmount || "")),
-      }));
-
-      const result = await brainChoose(brainsRef.current, botSeat, cands, "like");
-      if (result) {
-        chosen = result.item;
-      }
-    }
-
-    const newGame = JSON.parse(JSON.stringify(currentGame)) as GameState;
-    applyAction(newGame, chosen.action, chosen.raiseAmount || 0);
-    setGame(newGame);
-    layoutCards(newGame);
-
-    setThinking(false);
-  };
-
-  const handleNewGame = () => {
-    const newGame = createGame(4, 1000);
-    setGame(newGame);
-    setThinking(false);
-    layoutCards(newGame);
-  };
-
-  const handleBrainsApi = (api: BrainsApi | null) => {
-    brainsRef.current = api;
-  };
-
-  const legalActions = game.currentPlayer === humanSeat ? getLegalActions(game) : [];
-  const humanPlayer = game.players[humanSeat];
-
-  const statusText = game.status === "won"
-    ? `${lt("msg.winner")}: ${game.players[game.winner!].chips} chips`
-    : game.currentPlayer === humanSeat
-    ? lt("msg.yourTurn")
-    : lt(("phase." + game.phase) as any);
-
-  const brainNames = game.players.map((_, i) => `${game.players[i].chips} chips`);
-
-  if (!started) {
-    return (
-      <div className="glass p-10 text-center">
-        <h3 className="t-title">{lt("lobby.title")}</h3>
-        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
-        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
-      </div>
-    );
-  }
+  const g = store.game!;
+  const me = g.players[ME];
+  const legal = g.status === "active" && g.currentPlayer === ME ? getLegalActions(g) : [];
+  const toCall = Math.max(0, g.currentBet - me.bet);
+  const over = g.status !== "active";
+  const names = [lt("you"), NAMES[1], NAMES[2], NAMES[3]];
+  const active = over ? null : g.currentPlayer;
+  const status = over
+    ? (g.winner === ME ? lt("youWin", { n: g.pot }) : lt("flyWins", { name: names[g.winner ?? 1], n: g.pot }))
+    : g.currentPlayer === ME ? lt("turn.you") : lt("turn.fly", { name: names[g.currentPlayer] });
+  const strength = g.community.length >= 3 ? lt(`hand.${evaluateHand(me.hand, g.community).rank}` as PokerKey) : "";
+  const labelOf = (c: number) => { const a = labels.current.get(c); return a ? lt(a as "fold" | "call" | "raise", { n: "" }).trim() : ""; };
+  const raises = [0.25, 0.5, 1].map((f) => Math.max(1, Math.round(me.chips * f / 5) * 5)).filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-1 relative" ref={containerRef} />
+    <div className="space-y-2">
+      <div className={TABLE_FRAME}>
+        <PokerView store={store} view={view} body={bodyKind} className="glass-inner h-full w-full" />
 
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-        <div className="pointer-events-auto">
-          <button
-            onClick={handleNewGame}
-            className="px-4 py-2 bg-white/90 hover:bg-white rounded-lg shadow-lg"
-          >
-            {lt("action.newGame")}
-          </button>
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
+          <div className="hud">
+            <span className="t-cap">{lt("hand", { n: store.hand })} · {lt(`phase.${g.phase}` as PokerKey)}</span>
+            <span className="num t-foot">{lt("pot")} {g.pot}</span>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="hud pointer-events-auto gap-1.5" style={{ flexDirection: "row" }}>
+              <div className="seg seg-sm">
+                {(["seat", "top"] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{lt(v === "seat" ? "view.seat" : "view.top")}</button>)}
+              </div>
+              <div className="seg seg-sm"><button aria-pressed={brains} onClick={() => setBrains(!brains)} title={lt("brains.title")}>{lt("brains")}</button></div>
+            </div>
+            <div className="hud items-end">
+              {g.players.map((p) => (
+                <span key={p.seat} className={`flex items-baseline gap-2 ${active === p.seat ? "text-label" : p.folded ? "text-label-3" : "text-label-2"}`}>
+                  {active === p.seat && <span className="live-dot" />}
+                  <span className={`t-foot ${p.folded ? "line-through" : ""}`}>{names[p.seat]}</span>
+                  <span className="num t-foot">{p.chips}</span>
+                  {p.bet > 0 && <span className="num t-cap text-orange">+{p.bet}</span>}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white/90 rounded-lg shadow-lg px-4 py-2">
-          <div className="font-medium">{statusText}</div>
-          <div className="text-sm">{lt(("phase." + game.phase) as any)}</div>
-          <div className="text-sm">{lt("msg.pot")}: {game.pot}</div>
-        </div>
-      </div>
+        {wide && <FlyBrains names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
 
-      <div className="absolute top-20 left-4 bg-white/90 rounded-lg shadow-lg p-3 pointer-events-none">
-        <div className="text-sm font-medium">{lt("msg.chips")}: {humanPlayer.chips}</div>
-        {humanPlayer.hand.length > 0 && (
-          <div className="text-sm">
-            {humanPlayer.hand.map((c, i) => (
-              <span key={i} className="mr-1">{cardToString(c)}</span>
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+          <div className="hud pointer-events-none max-w-[55%]">
+            <span className="t-foot">{status}</span>
+            <span className="t-cap">{strength}{strength && toCall > 0 && !over ? " · " : ""}{toCall > 0 && !over ? `${toCall} ${lt("toCall")}` : ""}</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {over && <button className="btn-primary text-xs" onClick={() => deal(g)}>{lt("next")}</button>}
+            {over && <button className="btn text-xs" onClick={() => deal(null)}>{lt("new")}</button>}
+            {legal.includes("fold") && toCall > 0 && <button className="btn text-xs" onClick={() => act(ME, "fold")}>{lt("fold")}</button>}
+            {legal.includes("call") && <button className="btn-primary text-xs" onClick={() => act(ME, "call")}>{toCall > 0 ? lt("call", { n: Math.min(toCall, me.chips) }) : lt("check")}</button>}
+            {legal.includes("raise") && raises.map((r) => (
+              <button key={r} className="btn-on text-xs" onClick={() => act(ME, "raise", Math.min(r, me.chips - toCall))}>{r >= me.chips - toCall ? lt("allIn") : lt("raise", { n: r })}</button>
             ))}
           </div>
-        )}
-        {game.community.length > 0 && (
-          <div className="text-sm mt-1">
-            {getHandName(evaluateHand(humanPlayer.hand, game.community).rank)}
-          </div>
-        )}
+        </div>
       </div>
 
-      {legalActions.length > 0 && game.status === "active" && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-white/90 rounded-lg shadow-lg p-4 pointer-events-auto">
-          <div className="flex gap-3">
-            {legalActions.includes("fold") && (
-              <button
-                onClick={() => handleAction("fold")}
-                className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-              >
-                {lt("action.fold")}
-              </button>
-            )}
-            {legalActions.includes("call") && (
-              <button
-                onClick={() => handleAction("call")}
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
-              >
-                {lt("action.call")} ({game.currentBet - humanPlayer.bet})
-              </button>
-            )}
-            {legalActions.includes("raise") && (
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={raiseAmount}
-                  onChange={(e) => setRaiseAmount(parseInt(e.target.value) || 0)}
-                  className="w-24 px-3 py-2 border rounded-lg"
-                  min={game.currentBet}
-                  max={humanPlayer.chips}
-                />
-                <button
-                  onClick={() => handleAction("raise")}
-                  className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg"
-                >
-                  {lt("action.raise")}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {wide ? (
-        <FlyBrains
-          names={brainNames}
-          labelOf={(seat) => `${lt("msg.chips")} ${game.players[seat].chips}`}
-          active={game.status === "active" ? game.currentPlayer : null}
-          enabled={true}
-          onApi={handleBrainsApi}
-          variant="overlay"
-          seats={TABLE_SEATS}
-        />
-      ) : (
-        <div className="bg-white border-t border-gray-200">
-          <FlyBrains
-            names={brainNames}
-            labelOf={(seat) => `${lt("msg.chips")} ${game.players[seat].chips}`}
-            active={game.status === "active" ? game.currentPlayer : null}
-            enabled={true}
-            onApi={handleBrainsApi}
-            variant="strip"
-            seats={TABLE_SEATS}
-          />
-        </div>
-      )}
+      {!wide && <FlyBrains variant="strip" names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
+      <p className="t-foot px-1">{lt("caption")}</p>
     </div>
   );
 }

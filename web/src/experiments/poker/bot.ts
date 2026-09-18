@@ -34,7 +34,7 @@ export function getBestActions(game: GameState, seat: number): ScoredAction[] {
       score = 30 + handStrength.rank * 10 + Math.min(potOdds * 5, 20);
     } else if (action === "raise") {
       if (handStrength.rank >= 1) {
-        const raiseAmount = Math.min(game.currentBet, player.chips / 4);
+        const raiseAmount = Math.max(game.blind * 2, Math.min(game.currentBet, Math.floor(player.chips / 4)));
         score = 20 + handStrength.rank * 15;
         actions.push({ action, raiseAmount, score });
         continue;

@@ -1,372 +1,322 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useT } from "@/lib/i18n";
+/**
+ * A paper sudoku on the tea table, solved by you and the three flies in
+ * turn. The sheet is Poly Haven's paper texture with the grid and the
+ * digits inked onto it in a canvas; the ink colour says who wrote what.
+ * The engine keeps the rules; the bot ranks empty cells by how few digits
+ * fit; with Brains on the fly's connectome chooses among them and learns
+ * whether the cell was a safe one.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { TableScene, type Preset } from "@/lib/three/tableScene";
+import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
-import { dict } from "./dict";
 import { useMedia } from "@/lib/useMedia";
 import { useBodyKind } from "@/lib/sim/body";
-import { TableScene } from "@/lib/three/tableScene";
-import { FlyBrains, type BrainsApi, TABLE_SEATS } from "@/experiments/shared/FlyBrains";
-import { brainChoose, brainTeach, codeOf, type Candidate } from "@/experiments/shared/brainPlay";
-import * as THREE from "three";
-import {
-  createGame,
-  setCell,
-  type GameState,
-  type Board,
-} from "./engine";
-import { getBestMoves, type ScoredMove } from "./bot";
+import { FlyBrains, type BrainsApi } from "../shared/FlyBrains";
+import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
+import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
+import { canvasTexture, loadImage, pickPlane } from "../shared/tableAssets";
+import { dict } from "./dict";
+import { createGame, getCandidates, type GameState } from "./engine";
+import { getBestMoves } from "./bot";
 
-/**
- * Sudoku table
- */
+const ME = 0;
+const SHEET = 0.46, CELL = SHEET * 0.9 / 9, PX = 1024;
+const INK = ["#1c1a17", "#1d5fd1", "#2a8f4a", "#d9791d", "#8a4fd6"];   // given, you, Otto, Mira, Kip
+const RED = "#d3382b";
+type Difficulty = "easy" | "medium" | "hard";
+
+type View = "seat" | "top";
+const PRESETS: Record<View, Preset> = {
+  seat: { pos: [0, 0.44, 0.56], look: [0, 0.0, -0.02], fov: 52 },
+  top: { pos: [0, 0.72, 0.06], look: [0, 0, -0.02], fov: 46 },
+};
+
+class Store {
+  game: GameState | null = null;
+  /** Who wrote each cell: 0 given, 1 you, 2..4 the flies (seat + 1). */
+  who: number[][] = [];
+  selected: { row: number; col: number } | null = null;
+  actor: number | null = null;
+  version = 0;
+  bump(actor: number | null = null) { this.actor = actor; this.version++; }
+  begin(game: GameState) { this.game = game; this.who = game.initial.map((row) => row.map(() => 0)); this.selected = null; }
+  wrote(row: number, col: number, n: number, who: number) { if (this.game) { this.game.current[row][col] = n; this.who[row][col] = n ? who : 0; } }
+  select(cell: { row: number; col: number } | null) { this.selected = cell; }
+  won() { if (this.game) this.game.status = "won"; }
+}
+
+/** Does the digit at (row, col) break its row, column or box? Pure: the board is not touched. */
+function conflict(board: number[][], row: number, col: number): boolean {
+  const n = board[row][col];
+  if (!n) return false;
+  for (let i = 0; i < 9; i++) {
+    if (i !== col && board[row][i] === n) return true;
+    if (i !== row && board[i][col] === n) return true;
+  }
+  const br = Math.floor(row / 3) * 3, bc = Math.floor(col / 3) * 3;
+  for (let r = br; r < br + 3; r++) for (let c = bc; c < bc + 3; c++) if ((r !== row || c !== col) && board[r][c] === n) return true;
+  return false;
+}
+const solved = (board: number[][]) => board.every((row, r) => row.every((v, c) => v !== 0 && !conflict(board, r, c)));
+
+// The cloth on the table is 6 mm thick; the sheet lies on top of it.
+const SHEET_Y = 0.0075;
+const cellAt = (row: number, col: number, tableTop: number) => new THREE.Vector3((col - 4) * CELL, tableTop + SHEET_Y + 0.0006, (row - 4) * CELL);
+
+function SudokuView({ store, view, body, onPick, className }: { store: Store; view: View; body: BodyKind; onPick: (cell: number) => void; className?: string }) {
+  const host = useRef<HTMLDivElement>(null);
+  const pickRef = useRef(onPick); const viewRef = useRef(view);
+  useEffect(() => { pickRef.current = onPick; }, [onPick]);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const ts = new TableScene(el, {
+      body, set: "tea", presets: PRESETS, view: viewRef.current,
+      mat: { shape: "square", size: 0.96, texture: "cloth", color: 0x9a8f7c },
+    });
+    const { scene, tableTop, renderer } = ts;
+    let disposed = false;
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // The sheet: paper with the puzzle inked on.
+    const canvas = document.createElement("canvas");
+    canvas.width = PX; canvas.height = PX;
+    const ctx = canvas.getContext("2d")!;
+    const tex = canvasTexture(canvas, renderer);
+    const paperMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 });
+    const loader = new THREE.TextureLoader();
+    paperMat.normalMap = loader.load("/assets/tex/paper001/nor_gl.jpg");
+    paperMat.roughnessMap = loader.load("/assets/tex/paper001/rough.jpg");
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(SHEET, SHEET), paperMat);
+    sheet.rotation.x = -Math.PI / 2;
+    sheet.rotation.z = 0.012;                                // not quite square to the table, like a real sheet
+    sheet.position.y = tableTop + SHEET_Y;
+    sheet.receiveShadow = true;
+    group.add(sheet);
+    let paper: HTMLImageElement | null = null;
+    loadImage("/assets/tex/paper001/diffuse.jpg").then((im) => { if (!disposed) { paper = im; seen = -1; } }).catch((e) => console.error(e));
+
+    const planes: THREE.Mesh[] = [];
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      const p = pickPlane(CELL, CELL, r * 9 + c);
+      p.position.copy(cellAt(r, c, tableTop));
+      group.add(p); planes.push(p);
+    }
+    ts.pickables = planes;
+
+    const draw = (game: GameState) => {
+      ctx.clearRect(0, 0, PX, PX);
+      if (paper) ctx.drawImage(paper, 0, 0, PX, PX); else { ctx.fillStyle = "#efe8d8"; ctx.fillRect(0, 0, PX, PX); }
+      const m = PX * 0.05, g = PX * 0.9, cell = g / 9;
+      // Selection and its row, column and box, faint.
+      const sel = store.selected;
+      if (sel && game.status === "active") {
+        ctx.fillStyle = "rgba(29,95,209,0.08)";
+        for (let i = 0; i < 9; i++) { ctx.fillRect(m + i * cell, m + sel.row * cell, cell, cell); ctx.fillRect(m + sel.col * cell, m + i * cell, cell, cell); }
+        const br = Math.floor(sel.row / 3) * 3, bc = Math.floor(sel.col / 3) * 3;
+        ctx.fillRect(m + bc * cell, m + br * cell, cell * 3, cell * 3);
+        ctx.fillStyle = "rgba(29,95,209,0.22)";
+        ctx.fillRect(m + sel.col * cell, m + sel.row * cell, cell, cell);
+      }
+      // The grid.
+      ctx.strokeStyle = "#2a2622"; ctx.lineCap = "square";
+      for (let i = 0; i <= 9; i++) {
+        ctx.lineWidth = i % 3 === 0 ? PX * 0.006 : PX * 0.0018;
+        ctx.beginPath(); ctx.moveTo(m + i * cell, m); ctx.lineTo(m + i * cell, m + g); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(m, m + i * cell); ctx.lineTo(m + g, m + i * cell); ctx.stroke();
+      }
+      // The digits.
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+        const n = game.current[r][c];
+        if (!n) continue;
+        const who = store.who[r]?.[c] ?? 0;
+        ctx.fillStyle = conflict(game.current, r, c) ? RED : INK[who];
+        ctx.font = `${who === 0 ? "600" : "500"} ${Math.round(cell * (who === 0 ? 0.62 : 0.58))}px ${who === 0 ? "ui-sans-serif, system-ui" : "'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive"}`;
+        ctx.fillText(String(n), m + (c + 0.5) * cell, m + (r + 0.54) * cell);
+      }
+      tex.needsUpdate = true;
+    };
+
+    let seen = -1;
+    ts.onPick = (id) => pickRef.current(id);
+    ts.onFrame = () => {
+      ts.view = viewRef.current;
+      if (store.game && store.version !== seen) {
+        seen = store.version;
+        draw(store.game);
+        if (store.actor !== null) ts.reach(store.actor);
+      }
+    };
+    (window as unknown as { __gflySudoku?: unknown }).__gflySudoku = { cell: (row: number, col: number) => ts.toScreen(cellAt(row, col, tableTop)) };
+
+    return () => { disposed = true; tex.dispose(); ts.dispose(); };
+  }, [store, body]);
+
+  return <div ref={host} className={className} />;
+}
+
 export function SudokuTable() {
-  const { t, lang } = useT();
   const { lt } = useLocalT(dict);
   const wide = useMedia("(min-width: 1024px)");
   const bodyKind = useBodyKind();
+  const store = useMemo(() => new Store(), []);
+  const [, setTick] = useState(0);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [turn, setTurn] = useState(ME);                    // whose digit is next
+  const [view, setView] = useState<View>("seat");
+  const [brains, setBrains] = useState(false);
+  const brainsApi = useRef<BrainsApi | null>(null);
+  const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
+  const labels = useRef(new Map<number, string>());
+  const timer = useRef<number | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
-  const [game, setGame] = useState<GameState>(() => createGame("medium"));
-  const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
-  const [thinking, setThinking] = useState(false);
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-  const brainsRef = useRef<BrainsApi | null>(null);
+  const bump = useCallback((actor: number | null = null) => { store.bump(actor); setTick((t) => t + 1); }, [store]);
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
-  const ts = useRef<TableScene | null>(null);
-  const cellMeshes = useRef<THREE.Mesh[][]>([]);
-  const numberMeshes = useRef<THREE.Group[][]>([]);
+  const start = useCallback((d: Difficulty) => {
+    const g = createGame(d);
+    store.begin(g);
+    setGame(g); setTurn(ME);
+    bump();
+  }, [store, bump]);
+
+  const write = useCallback((row: number, col: number, n: number, who: number) => {
+    const g = store.game;
+    if (!g || g.status !== "active" || g.initial[row][col] !== 0) return false;
+    store.wrote(row, col, n, who);
+    if (solved(g.current)) store.won();
+    bump(who === 1 ? ME : who - 1);
+    return true;
+  }, [store, bump]);
+
+  // The flies take their turns after yours.
+  const version = store.version;
+  useEffect(() => {
+    const g = store.game;
+    if (!g || g.status !== "active" || turn === ME) return;
+    const seat = turn;
+    let cancelled = false;
+    const run = async () => {
+      const cands = getBestMoves(g.current, 3);
+      const api = brainsApi.current;
+      const next = seat === 3 ? ME : seat + 1;
+      if (cands.length === 0) { setTurn(next); return; }
+      if (!api?.ready(seat)) { write(cands[0].row, cands[0].col, cands[0].num, seat + 1); setTurn(next); return; }
+      const code = (c: (typeof cands)[number]) => { const k = codeOf(`${c.num}@${getCandidates(g.current, c.row, c.col).length}`); labels.current.set(k, String(c.num)); return k; };
+      const r = await brainChoose(api, seat, cands.map((c) => ({ item: c, code: code(c) })), "like");
+      if (cancelled || store.game !== g) return;
+      const chosen = r?.item ?? cands[0];
+      if (r) brainTeach(api, seat, [code(chosen)], getCandidates(g.current, chosen.row, chosen.col).length === 1 ? 1 : -1);
+      write(chosen.row, chosen.col, chosen.num, seat + 1);
+      setTurn(next);
+    };
+    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => { console.error(e); setTurn(ME); }); }, 700);
+    return () => { cancelled = true; if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, turn]);
+
+  const enter = useCallback((n: number) => {
+    const g = store.game, sel = store.selected;
+    if (!g || !sel || turn !== ME || g.status !== "active" || g.initial[sel.row][sel.col] !== 0) return;
+    if (write(sel.row, sel.col, n, 1) && n !== 0) setTurn(1);
+  }, [store, turn, write]);
+
+  const pick = useCallback((cell: number) => {
+    const g = store.game;
+    if (!g || g.status !== "active") return;
+    const row = Math.floor(cell / 9), col = cell % 9;
+    store.select(g.initial[row][col] === 0 ? { row, col } : null);
+    bump();
+  }, [store, bump]);
 
   useEffect(() => {
-    if (!started || !containerRef.current) return;
-
-    const scene = new TableScene(containerRef.current, {
-      body: bodyKind,
-      set: "tea",
-      mat: { shape: "square", size: 1.0, texture: "cloth", color: 0xf5f5dc },
-      presets: {
-        main: { pos: [0, 0.5, 1.0], look: [0, 0, 0], fov: 45 },
-      },
-      view: "main",
-      seated: [0],
-    });
-
-    ts.current = scene;
-    createBoardMeshes(scene);
-    updateBoard(game.current);
-
-    scene.pickables = cellMeshes.current.flat();
-    scene.onPick = handlePick;
-
-    return () => {
-      scene.dispose();
-      ts.current = null;
+    if (!game) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= "1" && e.key <= "9") { enter(Number(e.key)); e.preventDefault(); }
+      else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") { enter(0); e.preventDefault(); }
     };
-  }, [started, bodyKind]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [game, enter]);
 
-  useEffect(() => {
-    if (ts.current) {
-      updateBoard(game.current);
-    }
-  }, [game]);
-
-  const createBoardMeshes = (scene: TableScene) => {
-    const tableTop = scene.tableTop;
-    const cellSize = 0.12;
-    const boardSize = cellSize * 9;
-    const boardThickness = 0.02;
-
-    const boardGeom = new THREE.BoxGeometry(boardSize, boardThickness, boardSize);
-    const boardMat = new THREE.MeshStandardMaterial({ color: 0xf5f5dc });
-    const board = new THREE.Mesh(boardGeom, boardMat);
-    board.position.set(0, tableTop + boardThickness / 2, 0);
-    board.receiveShadow = true;
-    scene.scene.add(board);
-
-    const cellMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-
-    for (let row = 0; row < 9; row++) {
-      cellMeshes.current[row] = [];
-      numberMeshes.current[row] = [];
-
-      for (let col = 0; col < 9; col++) {
-        const geom = new THREE.PlaneGeometry(cellSize * 0.95, cellSize * 0.95);
-        const mesh = new THREE.Mesh(geom, cellMat.clone());
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(
-          (col - 4) * cellSize,
-          tableTop + boardThickness + 0.002,
-          (row - 4) * cellSize
-        );
-        mesh.receiveShadow = true;
-        mesh.userData = { row, col };
-        scene.scene.add(mesh);
-        cellMeshes.current[row][col] = mesh;
-
-        const numGroup = new THREE.Group();
-        numGroup.position.set(
-          (col - 4) * cellSize,
-          tableTop + boardThickness + 0.04,
-          (row - 4) * cellSize
-        );
-        scene.scene.add(numGroup);
-        numberMeshes.current[row][col] = numGroup;
-      }
-    }
-
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x666666 });
-    const thickLineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
-
-    for (let i = 0; i <= 9; i++) {
-      const x = (i - 4.5) * cellSize;
-      const points = [
-        new THREE.Vector3(x, tableTop + boardThickness + 0.003, -boardSize / 2),
-        new THREE.Vector3(x, tableTop + boardThickness + 0.003, boardSize / 2),
-      ];
-      const geom = new THREE.BufferGeometry().setFromPoints(points);
-      const mat = i % 3 === 0 ? thickLineMat : lineMat;
-      const line = new THREE.Line(geom, mat);
-      scene.scene.add(line);
-    }
-
-    for (let i = 0; i <= 9; i++) {
-      const z = (i - 4.5) * cellSize;
-      const points = [
-        new THREE.Vector3(-boardSize / 2, tableTop + boardThickness + 0.003, z),
-        new THREE.Vector3(boardSize / 2, tableTop + boardThickness + 0.003, z),
-      ];
-      const geom = new THREE.BufferGeometry().setFromPoints(points);
-      const mat = i % 3 === 0 ? thickLineMat : lineMat;
-      const line = new THREE.Line(geom, mat);
-      scene.scene.add(line);
-    }
-  };
-
-  const updateBoard = (board: Board) => {
-    for (let row = 0; row < 9; row++) {
-      for (let col = 0; col < 9; col++) {
-        const num = board[row][col];
-        const group = numberMeshes.current[row][col];
-
-        while (group.children.length > 0) {
-          group.remove(group.children[0]);
-        }
-
-        if (num !== 0) {
-          const isInitial = game.initial[row][col] !== 0;
-          const geom = new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16);
-          const mat = new THREE.MeshStandardMaterial({
-            color: isInitial ? 0x333333 : 0x0066cc,
-          });
-          const mesh = new THREE.Mesh(geom, mat);
-          mesh.castShadow = true;
-          group.add(mesh);
-        }
-
-        const cellMesh = cellMeshes.current[row][col];
-        if (selected && selected.row === row && selected.col === col) {
-          (cellMesh.material as THREE.MeshStandardMaterial).color.setHex(0xaaddff);
-        } else {
-          (cellMesh.material as THREE.MeshStandardMaterial).color.setHex(0xffffff);
-        }
-      }
-    }
-  };
-
-  const handlePick = useCallback((id: number) => {
-    if (game.status !== "active" || thinking) return;
-
-    const scene = ts.current;
-    if (!scene) return;
-
-    const picked = scene.pickables[id];
-    if (!picked) return;
-
-    const row = picked.userData.row;
-    const col = picked.userData.col;
-
-    setSelected({ row, col });
-  }, [game, thinking]);
-
-  const handleNumberInput = async (num: number) => {
-    if (!selected || game.status !== "active" || thinking) return;
-    if (game.initial[selected.row][selected.col] !== 0) return;
-
-    const newGame = {
-      ...game,
-      current: game.current.map(r => [...r]),
-    };
-
-    setCell(newGame, selected.row, selected.col, num);
-    setGame(newGame);
-
-    if (brainsRef.current) {
-      const code = codeOf(`${selected.row}${selected.col}${num}`);
-      await brainTeach(brainsRef.current, 0, [code], 1);
-    }
-
-    if (newGame.status === "won") {
-      setSelected(null);
-    }
-  };
-
-  const handleClear = () => {
-    if (!selected || game.status !== "active") return;
-    if (game.initial[selected.row][selected.col] !== 0) return;
-
-    const newGame = {
-      ...game,
-      current: game.current.map(r => [...r]),
-    };
-
-    newGame.current[selected.row][selected.col] = 0;
-    setGame(newGame);
-  };
-
-  const handleHint = async () => {
-    if (game.status !== "active" || thinking) return;
-
-    setThinking(true);
-
-    const candidates = getBestMoves(game.current, 3);
-    if (candidates.length === 0) {
-      setThinking(false);
-      return;
-    }
-
-    let chosen = candidates[0];
-
-    if (brainsRef.current) {
-      const cands: Candidate<ScoredMove>[] = candidates.map(c => ({
-        item: c,
-        code: codeOf(`${c.row}${c.col}${c.num}`),
-      }));
-
-      const result = await brainChoose(brainsRef.current, 0, cands, "like");
-      if (result) {
-        chosen = result.item;
-      }
-    }
-
-    const newGame = {
-      ...game,
-      current: game.current.map(r => [...r]),
-    };
-
-    setCell(newGame, chosen.row, chosen.col, chosen.num);
-    setGame(newGame);
-    setSelected({ row: chosen.row, col: chosen.col });
-
-    setThinking(false);
-  };
-
-  const handleNewGame = () => {
-    const newGame = createGame(difficulty);
-    setGame(newGame);
-    setSelected(null);
-    setThinking(false);
-  };
-
-  const handleBrainsApi = (api: BrainsApi | null) => {
-    brainsRef.current = api;
-  };
-
-  const statusText = game.status === "won"
-    ? lt("msg.complete")
-    : lt("status.playing");
-
-  if (!started) {
+  if (!game) {
     return (
-      <div className="glass p-10 text-center">
-        <h3 className="t-title">{lt("lobby.title")}</h3>
-        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
-        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
-      </div>
+      <Lobby title={lt("lobby.title")} body={lt("lobby.body")} action={lt("lobby.sit")} onStart={() => start(difficulty)}>
+        <div className="seg">{(["easy", "medium", "hard"] as const).map((d) => <button key={d} aria-pressed={difficulty === d} onClick={() => setDifficulty(d)}>{lt(d)}</button>)}</div>
+      </Lobby>
     );
   }
 
-  return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-1 relative" ref={containerRef} />
+  const g = store.game!;
+  const filled = g.current.flat().filter((v) => v !== 0).length;
+  let conflicts = 0;
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (conflict(g.current, r, c)) conflicts++;
+  const names = [lt("you"), NAMES[1], NAMES[2], NAMES[3]];
+  const active = g.status === "active" ? turn : null;
+  const status = g.status === "won" ? lt("solved") : turn === ME ? lt("turn.you") : lt("turn.fly", { name: names[turn] });
+  const sel = store.selected;
+  const canWrite = turn === ME && g.status === "active" && !!sel;
+  const labelOf = (c: number) => labels.current.get(c) ?? "";
 
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-        <div className="pointer-events-auto flex gap-2">
-          <button
-            onClick={handleNewGame}
-            className="px-4 py-2 bg-white/90 hover:bg-white rounded-lg shadow-lg"
-          >
-            {lt("action.newGame")}
-          </button>
-          <select
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value as any)}
-            className="px-4 py-2 bg-white/90 hover:bg-white rounded-lg shadow-lg"
-          >
-            <option value="easy">{lt("difficulty.easy")}</option>
-            <option value="medium">{lt("difficulty.medium")}</option>
-            <option value="hard">{lt("difficulty.hard")}</option>
-          </select>
-          <button
-            onClick={handleHint}
-            disabled={game.status !== "active" || thinking}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-lg disabled:opacity-50"
-          >
-            {lt("action.hint")}
-          </button>
+  return (
+    <div className="space-y-2">
+      <div className={TABLE_FRAME}>
+        <SudokuView store={store} view={view} body={bodyKind} onPick={pick} className="glass-inner h-full w-full" />
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
+          <div className="hud">
+            <span className="t-cap">{lt(difficulty)} · {lt("filled", { n: filled })}</span>
+            <span className={`t-foot num ${conflicts ? "text-red" : ""}`}>{conflicts ? lt("conflicts", { n: conflicts }) : status}</span>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-1.5 pointer-events-auto">
+              <div className="seg seg-sm">
+                {(["seat", "top"] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{lt(v === "seat" ? "view.seat" : "view.top")}</button>)}
+              </div>
+              <div className="seg seg-sm"><button aria-pressed={brains} onClick={() => setBrains(!brains)} title={lt("brains.title")}>{lt("brains")}</button></div>
+            </div>
+            <div className="hud items-end">
+              {names.map((n, s) => (
+                <span key={s} className={`flex items-baseline gap-2 ${active === s ? "text-label" : "text-label-2"}`}>
+                  {active === s && <span className="live-dot" />}
+                  <span className="t-foot">{n}</span>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: INK[s + 1] }} />
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white/90 rounded-lg shadow-lg px-4 py-2">
-          <div className="font-medium">{statusText}</div>
+        {wide && <FlyBrains names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
+
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+          <div className="hud pointer-events-none max-w-[45%]">
+            <span className="t-foot">{status}</span>
+            <span className="t-cap">{lt("keys")}</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {g.status === "won" && <button className="btn-primary text-xs" onClick={() => start(difficulty)}>{lt("new")}</button>}
+            {g.status === "active" && (
+              <div className="seg">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <button key={n} disabled={!canWrite} className="num" onClick={() => enter(n)}>{n}</button>)}
+                <button disabled={!canWrite || !sel || g.current[sel.row][sel.col] === 0} onClick={() => enter(0)}>{lt("clear")}</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {selected && game.status === "active" && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-white/90 rounded-lg shadow-lg p-4 pointer-events-auto">
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-              <button
-                key={num}
-                onClick={() => handleNumberInput(num)}
-                className="w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-lg font-bold"
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleClear}
-            className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
-          >
-            {lt("action.clear")}
-          </button>
-        </div>
-      )}
-
-      {wide ? (
-        <FlyBrains
-          names={["Sudoku", "", "", ""]}
-          labelOf={() => "Sudoku"}
-          active={game.status === "active" ? 0 : null}
-          enabled={true}
-          onApi={handleBrainsApi}
-          variant="overlay"
-          seats={[TABLE_SEATS[0]]}
-        />
-      ) : (
-        <div className="bg-white border-t border-gray-200">
-          <FlyBrains
-            names={["Sudoku", "", "", ""]}
-            labelOf={() => "Sudoku"}
-            active={game.status === "active" ? 0 : null}
-            enabled={true}
-            onApi={handleBrainsApi}
-            variant="strip"
-            seats={[TABLE_SEATS[0]]}
-          />
-        </div>
-      )}
+      {!wide && <FlyBrains variant="strip" names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
+      <p className="t-foot px-1">{lt("caption")}</p>
     </div>
   );
 }

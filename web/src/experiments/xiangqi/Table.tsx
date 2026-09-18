@@ -1,448 +1,318 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useT } from "@/lib/i18n";
+/**
+ * Xiangqi on the tea table. You are red at the south seat; the fly at the
+ * north seat is black, the flies east and west watch. The board and the
+ * piece faces are the public-domain Wikimedia Commons SVGs under
+ * /assets/xiangqi, drawn onto a wooden board and wooden discs. Pieces ease
+ * to their points, so moves and captures animate.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { TableScene, type Preset } from "@/lib/three/tableScene";
+import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
-import { dict } from "./dict";
 import { useMedia } from "@/lib/useMedia";
 import { useBodyKind } from "@/lib/sim/body";
-import { TableScene } from "@/lib/three/tableScene";
-import { FlyBrains, type BrainsApi, TABLE_SEATS } from "@/experiments/shared/FlyBrains";
-import { brainChoose, brainTeach, codeOf, type Candidate } from "@/experiments/shared/brainPlay";
-import * as THREE from "three";
-import {
-  createGame,
-  generateLegalMoves,
-  applyMove,
-  isInCheck,
-  posToString,
-  moveToString,
-  type GameState,
-  type Move,
-  type Position,
-  type Color,
-} from "./engine";
+import { FlyBrains, type BrainsApi, TABLE_SEATS } from "../shared/FlyBrains";
+import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
+import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
+import { FLAT, dot, ease, imageTexture, pickPlane, ring } from "../shared/tableAssets";
+import { dict } from "./dict";
+import { applyMove, createGame, generateLegalMoves, isInCheck, moveToString, type Color, type GameState, type Move, type PieceKind, type Position } from "./engine";
 import { getBestMoves } from "./bot";
 
-/**
- * Xiangqi (Chinese Chess) table for 2 players
- */
+const ME = 0, FLY = 2;
+const BOT: Color = "black";
+const KINDS: PieceKind[] = ["general", "advisor", "elephant", "horse", "chariot", "cannon", "soldier"];
+// The SVG board is 900 x 1200 with points every 100 units; the whole sheet is 0.72 m across here.
+const BOARD_W = 0.72, BOARD_H = BOARD_W * 1200 / 900, PITCH = BOARD_W / 9, BOARD_T = 0.014;
+const DISC_R = 0.031, DISC_H = 0.012;
+
+type View = "seat" | "top";
+const PRESETS: Record<View, Preset> = {
+  seat: { pos: [0, 0.42, 0.74], look: [0, 0.03, -0.04], fov: 56 },
+  top: { pos: [0, 0.95, 0.2], look: [0, 0, -0.03], fov: 50 },
+};
+
+class Store {
+  game: GameState | null = null;
+  selected: Position | null = null;
+  legal: Move[] = [];
+  last: Move | null = null;
+  actor: number | null = null;
+  version = 0;
+  bump(actor: number | null = null) { this.actor = actor; this.version++; }
+  begin(game: GameState) { this.game = game; this.selected = null; this.legal = []; this.last = null; }
+  moved(move: Move) { this.last = move; this.selected = null; this.legal = []; }
+  select(selected: Position | null, legal: Move[]) { this.selected = selected; this.legal = legal; }
+}
+
+/** World position of a point: red (rank 0) nearest the south seat. */
+const at = (file: number, rank: number, tableTop: number) => new THREE.Vector3((file - 4) * PITCH, tableTop + BOARD_T + DISC_H / 2, (4.5 - rank) * PITCH);
+const key = (p: Position) => p.rank * 9 + p.file;
+
+function XiangqiView({ store, view, body, onPick, className }: { store: Store; view: View; body: BodyKind; onPick: (point: number) => void; className?: string }) {
+  const host = useRef<HTMLDivElement>(null);
+  const pickRef = useRef(onPick); const viewRef = useRef(view);
+  useEffect(() => { pickRef.current = onPick; }, [onPick]);
+  useEffect(() => { viewRef.current = view; }, [view]);
+
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const ts = new TableScene(el, {
+      body, set: "tea", presets: PRESETS, view: viewRef.current,
+      mat: { shape: "square", size: 0.98, texture: "velvet", color: 0x7a5c48 },
+    });
+    const { scene, tableTop, renderer } = ts;
+    let disposed = false;
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // The board: a wooden slab with the Commons sheet on top.
+    const tex = new THREE.TextureLoader();
+    const wood = { map: tex.load("/assets/tex/wood_table_001/diffuse.jpg"), normalMap: tex.load("/assets/tex/wood_table_001/nor_gl.jpg"), roughnessMap: tex.load("/assets/tex/wood_table_001/rough.jpg") };
+    wood.map.colorSpace = THREE.SRGBColorSpace;
+    const woodMat = new THREE.MeshStandardMaterial({ ...wood, color: 0xb08a5a, roughness: 0.8 });
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(BOARD_W + 0.03, BOARD_T, BOARD_H + 0.03), woodMat);
+    slab.position.y = tableTop + BOARD_T / 2;
+    slab.castShadow = true; slab.receiveShadow = true;
+    group.add(slab);
+    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(BOARD_W, BOARD_H), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }));
+    sheet.rotation.x = -Math.PI / 2;
+    sheet.position.y = tableTop + BOARD_T + 0.0004;
+    sheet.receiveShadow = true;
+    group.add(sheet);
+    imageTexture("/assets/xiangqi/board.svg", 1024, 1366, renderer).then((t) => {
+      if (disposed) { t.dispose(); return; }
+      (sheet.material as THREE.MeshStandardMaterial).map = t; (sheet.material as THREE.MeshStandardMaterial).needsUpdate = true;
+    }).catch((e) => console.error(e));
+
+    // Discs: wood sides, the piece's face on top. One material per colour and kind.
+    const discGeo = new THREE.CylinderGeometry(DISC_R, DISC_R, DISC_H, 40);
+    const faces = new Map<string, THREE.Material[]>();
+    const faceReady = Promise.all((["red", "black"] as const).flatMap((c) => KINDS.map(async (k) => {
+      const t = await imageTexture(`/assets/xiangqi/${c}_${k}.svg`, 256, 256, renderer, (ctx) => { ctx.fillStyle = "#e9d2a4"; ctx.fillRect(0, 0, 256, 256); });
+      const top = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55 });
+      faces.set(`${c}-${k}`, [woodMat, top, woodMat]);         // cylinder groups: side, top, bottom
+    }))).then(() => { seen = -1; }).catch((e) => console.error(e));
+
+    // Points the visitor can point at, and the marks.
+    const planes: THREE.Mesh[] = [];
+    for (let r = 0; r < 10; r++) for (let f = 0; f < 9; f++) {
+      const p = pickPlane(PITCH, PITCH, r * 9 + f);
+      p.position.copy(at(f, r, tableTop)).setY(tableTop + BOARD_T + 0.0006);
+      group.add(p); planes.push(p);
+    }
+    const markY = tableTop + BOARD_T + 0.0012;
+    const selRing = ring(DISC_R * 1.35, 0x4ea1ff); selRing.visible = false; group.add(selRing);
+    const checkRing = ring(DISC_R * 1.35, 0xff453a); checkRing.visible = false; group.add(checkRing);
+    const lastFrom = dot(DISC_R * 0.9, 0xffd60a, 0.25); lastFrom.visible = false; group.add(lastFrom);
+    const lastTo = ring(DISC_R * 1.3, 0xffd60a, 0.5); lastTo.visible = false; group.add(lastTo);
+    const dots: THREE.Mesh[] = [];
+    for (let i = 0; i < 20; i++) { const d = dot(0.009, 0x30d158, 0.85); d.visible = false; group.add(d); dots.push(d); }
+
+    type P = { mesh: THREE.Mesh; key: string; point: number };
+    const pieces: P[] = [];
+    const targets = new Map<THREE.Object3D, { pos: THREE.Vector3; quat: THREE.Quaternion }>();
+    let seen = -1;
+
+    const layout = (game: GameState) => {
+      if (faces.size < 14) return;
+      const b = game.board.squares;
+      const wanted: { key: string; point: number }[] = [];
+      for (let r = 0; r < 10; r++) for (let f = 0; f < 9; f++) { const pc = b[r][f]; if (pc) wanted.push({ key: `${pc.color}-${pc.kind}`, point: r * 9 + f }); }
+      const free = new Set(pieces);
+      const assign: [P, number][] = [];
+      const rest: typeof wanted = [];
+      for (const w of wanted) {
+        const p = [...free].find((x) => x.key === w.key && x.point === w.point);
+        if (p) { free.delete(p); assign.push([p, w.point]); } else rest.push(w);
+      }
+      for (const w of rest) {
+        let p = [...free].find((x) => x.key === w.key);
+        if (!p) {
+          const mesh = new THREE.Mesh(discGeo, faces.get(w.key)!);
+          mesh.castShadow = true; mesh.receiveShadow = true;
+          mesh.position.copy(at(w.point % 9, Math.floor(w.point / 9), tableTop));
+          group.add(mesh);
+          p = { mesh, key: w.key, point: w.point };
+          pieces.push(p);
+        }
+        free.delete(p); assign.push([p, w.point]);
+      }
+      targets.clear();
+      for (const [p, point] of assign) {
+        p.point = point; p.mesh.userData.pickId = point;
+        targets.set(p.mesh, { pos: at(point % 9, Math.floor(point / 9), tableTop), quat: FLAT });
+      }
+      for (const p of free) { p.point = -1; p.mesh.userData.pickId = undefined; }
+      ts.pickables = [...planes, ...assign.map(([p]) => p.mesh)];
+
+      const put = (m: THREE.Mesh, pos: Position | null) => { m.visible = !!pos; if (pos) m.position.copy(at(pos.file, pos.rank, tableTop)).setY(markY); };
+      put(selRing, store.selected);
+      put(lastFrom, store.last?.from ?? null); put(lastTo, store.last?.to ?? null);
+      dots.forEach((d, i) => put(d, store.legal[i] ? store.legal[i].to : null));
+      const turn = game.board.turn;
+      let general: Position | null = null;
+      if (game.status !== "stalemate" && isInCheck(game.board, turn)) {
+        for (let r = 0; r < 10; r++) for (let f = 0; f < 9; f++) { const pc = b[r][f]; if (pc && pc.kind === "general" && pc.color === turn) general = { file: f, rank: r }; }
+      }
+      put(checkRing, general);
+    };
+
+    ts.onPick = (id) => pickRef.current(id);
+    ts.onFrame = (dt) => {
+      ts.view = viewRef.current;
+      if (store.game && store.version !== seen) {
+        seen = store.version;
+        layout(store.game);
+        if (store.actor !== null) ts.reach(store.actor);
+      }
+      ease(pieces.map((p) => [p.mesh, targets.get(p.mesh)]), dt, 8);
+    };
+    (window as unknown as { __gflyXiangqi?: unknown }).__gflyXiangqi = { point: (file: number, rank: number) => ts.toScreen(at(file, rank, tableTop)) };
+
+    return () => {
+      disposed = true;
+      faceReady.then(() => { for (const m of faces.values()) { const top = m[1] as THREE.MeshStandardMaterial; top.map?.dispose(); top.dispose(); } });
+      ts.dispose();
+    };
+  }, [store, body]);
+
+  return <div ref={host} className={className} />;
+}
+
 export function XiangqiTable() {
-  const { t, lang } = useT();
   const { lt } = useLocalT(dict);
   const wide = useMedia("(min-width: 1024px)");
   const bodyKind = useBodyKind();
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
-  const [game, setGame] = useState<GameState>(createGame);
-  const [selectedSquare, setSelectedSquare] = useState<Position | null>(null);
-  const [legalMoves, setLegalMoves] = useState<Move[]>([]);
-  const [thinking, setThinking] = useState(false);
+  const store = useMemo(() => new Store(), []);
+  const [, setTick] = useState(0);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [view, setView] = useState<View>("seat");
+  const [brains, setBrains] = useState(false);
   const [log, setLog] = useState<string[]>([]);
-  const brainsRef = useRef<BrainsApi | null>(null);
+  const brainsApi = useRef<BrainsApi | null>(null);
+  const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
+  const labels = useRef(new Map<number, string>());
+  const timer = useRef<number | null>(null);
 
-  const ts = useRef<TableScene | null>(null);
-  const meshes = useRef<Map<string, THREE.Mesh>>(new Map());
-  const targetPositions = useRef<Map<string, { pos: THREE.Vector3; rot: THREE.Quaternion }>>(new Map());
+  const bump = useCallback((actor: number | null = null) => { store.bump(actor); setTick((t) => t + 1); }, [store]);
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
-  const humanSeat = 0;
-  const humanColor: Color = "red";
+  const start = useCallback(() => {
+    const g = createGame();
+    store.begin(g);
+    setGame(g); setLog([]);
+    bump();
+  }, [store, bump]);
 
-  // Initialize scene
+  const play = useCallback((move: Move, actor: number) => {
+    const g = store.game;
+    if (!g) return;
+    applyMove(g, move);
+    store.moved(move);
+    setLog((l) => [...l, moveToString(move)].slice(-12));
+    bump(actor);
+  }, [store, bump]);
+
+  const flyTurn = useCallback(async () => {
+    const g = store.game;
+    if (!g || g.status !== "active" || g.board.turn !== BOT) return;
+    const cands = getBestMoves(g.board, 3, 3);
+    if (cands.length === 0) return;
+    const api = brainsApi.current;
+    if (!api?.ready(FLY)) { play(cands[0].move, FLY); return; }
+    const code = (m: Move) => { const c = codeOf(moveToString(m)); labels.current.set(c, moveToString(m)); return c; };
+    const r = await brainChoose(api, FLY, cands.map((c) => ({ item: c, code: code(c.move) })), "like");
+    if (store.game !== g || g.board.turn !== BOT) return;
+    const chosen = r?.item ?? cands[0];
+    if (r && cands.length > 1 && chosen === cands[0]) brainTeach(api, FLY, [code(chosen.move)], 1);
+    else if (r && cands.length > 1 && chosen === cands[cands.length - 1]) brainTeach(api, FLY, [code(chosen.move)], -1);
+    play(chosen.move, FLY);
+  }, [store, play]);
+
+  const version = store.version;
   useEffect(() => {
-    if (!containerRef.current) return;
+    const g = store.game;
+    if (!g || g.status !== "active" || g.board.turn !== BOT) return;
+    timer.current = window.setTimeout(() => { timer.current = null; flyTurn(); }, 650);
+    return () => { if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version]);
 
-    const scene = new TableScene(containerRef.current, {
-      body: bodyKind,
-      set: "tea",
-      mat: { shape: "square", size: 1.0, texture: "cloth", color: 0xd4a574 },
-      presets: {
-        main: { pos: [0, 0.5, 1.2], look: [0, 0, 0], fov: 50 },
-      },
-      view: "main",
-      seated: [0, 2],
-    });
+  const pick = useCallback((point: number) => {
+    const g = store.game;
+    if (!g || g.status !== "active" || g.board.turn !== "red") return;
+    const pos: Position = { file: point % 9, rank: Math.floor(point / 9) };
+    const to = store.legal.find((m) => m.to.file === pos.file && m.to.rank === pos.rank);
+    if (to) { play(to, ME); return; }
+    const pc = g.board.squares[pos.rank][pos.file];
+    if (pc && pc.color === "red") store.select(pos, generateLegalMoves(g.board).filter((m) => m.from.file === pos.file && m.from.rank === pos.rank));
+    else store.select(null, []);
+    bump();
+  }, [store, play, bump]);
 
-    ts.current = scene;
-    createBoardMeshes(scene);
-    layoutPieces(game.board.squares);
+  if (!game) return <Lobby title={lt("lobby.title")} body={lt("lobby.body")} action={lt("lobby.sit")} onStart={start} />;
 
-    scene.pickables = Array.from(meshes.current.values());
-    scene.onPick = handlePick;
-
-    scene.onFrame = (dt) => {
-      for (const [key, mesh] of meshes.current.entries()) {
-        const target = targetPositions.current.get(key);
-        if (target) {
-          mesh.position.lerp(target.pos, Math.min(1, dt * 8));
-          mesh.quaternion.slerp(target.rot, Math.min(1, dt * 8));
-        }
-      }
-    };
-
-    return () => {
-      scene.dispose();
-      ts.current = null;
-    };
-  }, [started, bodyKind]);
-
-  const createBoardMeshes = (scene: TableScene) => {
-    const tableTop = scene.tableTop;
-    const fileSize = 0.15;
-    const rankSize = 0.15;
-    const boardWidth = fileSize * 8;
-    const boardHeight = rankSize * 9;
-    const boardThickness = 0.02;
-
-    // Board base
-    const boardGeom = new THREE.BoxGeometry(boardWidth, boardThickness, boardHeight);
-    const boardMat = new THREE.MeshStandardMaterial({ color: 0xd4a574 });
-    const board = new THREE.Mesh(boardGeom, boardMat);
-    board.position.set(0, tableTop + boardThickness / 2, 0);
-    board.receiveShadow = true;
-    scene.scene.add(board);
-
-    // Draw grid lines
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
-
-    // Vertical lines
-    for (let file = 0; file < 9; file++) {
-      const x = (file - 4) * fileSize;
-
-      // Bottom half
-      let points = [
-        new THREE.Vector3(x, tableTop + boardThickness + 0.001, -4 * rankSize),
-        new THREE.Vector3(x, tableTop + boardThickness + 0.001, 0),
-      ];
-      let geom = new THREE.BufferGeometry().setFromPoints(points);
-      let line = new THREE.Line(geom, lineMat);
-      scene.scene.add(line);
-
-      // Top half
-      points = [
-        new THREE.Vector3(x, tableTop + boardThickness + 0.001, 0.5 * rankSize),
-        new THREE.Vector3(x, tableTop + boardThickness + 0.001, 4.5 * rankSize),
-      ];
-      geom = new THREE.BufferGeometry().setFromPoints(points);
-      line = new THREE.Line(geom, lineMat);
-      scene.scene.add(line);
-    }
-
-    // Horizontal lines
-    for (let rank = 0; rank < 10; rank++) {
-      const z = (rank - 4.5) * rankSize;
-      const points = [
-        new THREE.Vector3(-4 * fileSize, tableTop + boardThickness + 0.001, z),
-        new THREE.Vector3(4 * fileSize, tableTop + boardThickness + 0.001, z),
-      ];
-      const geom = new THREE.BufferGeometry().setFromPoints(points);
-      const line = new THREE.Line(geom, lineMat);
-      scene.scene.add(line);
-    }
-
-    // Create pieces
-    const pieces: Array<[Color, string, number, number]> = [];
-
-    // Red pieces
-    pieces.push(["red", "chariot", 0, 0]);
-    pieces.push(["red", "horse", 0, 1]);
-    pieces.push(["red", "elephant", 0, 2]);
-    pieces.push(["red", "advisor", 0, 3]);
-    pieces.push(["red", "general", 0, 4]);
-    pieces.push(["red", "advisor", 0, 5]);
-    pieces.push(["red", "elephant", 0, 6]);
-    pieces.push(["red", "horse", 0, 7]);
-    pieces.push(["red", "chariot", 0, 8]);
-    pieces.push(["red", "cannon", 2, 1]);
-    pieces.push(["red", "cannon", 2, 7]);
-    for (let i = 0; i < 5; i++) {
-      pieces.push(["red", "soldier", 3, i * 2]);
-    }
-
-    // Black pieces
-    pieces.push(["black", "chariot", 9, 0]);
-    pieces.push(["black", "horse", 9, 1]);
-    pieces.push(["black", "elephant", 9, 2]);
-    pieces.push(["black", "advisor", 9, 3]);
-    pieces.push(["black", "general", 9, 4]);
-    pieces.push(["black", "advisor", 9, 5]);
-    pieces.push(["black", "elephant", 9, 6]);
-    pieces.push(["black", "horse", 9, 7]);
-    pieces.push(["black", "chariot", 9, 8]);
-    pieces.push(["black", "cannon", 7, 1]);
-    pieces.push(["black", "cannon", 7, 7]);
-    for (let i = 0; i < 5; i++) {
-      pieces.push(["black", "soldier", 6, i * 2]);
-    }
-
-    for (const [color, kind, rank, file] of pieces) {
-      const key = `${color}-${kind}-${rank}-${file}`;
-      const geom = new THREE.CylinderGeometry(0.045, 0.045, 0.08, 32);
-      const mat = new THREE.MeshStandardMaterial({ color: color === "red" ? 0xcc3333 : 0x333333 });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.castShadow = true;
-      mesh.userData = { color, kind, rank, file };
-      scene.scene.add(mesh);
-      meshes.current.set(key, mesh);
-    }
-  };
-
-  const layoutPieces = (squares: any[][]) => {
-    const scene = ts.current;
-    if (!scene) return;
-
-    const fileSize = 0.15;
-    const rankSize = 0.15;
-    const tableTop = scene.tableTop;
-
-    targetPositions.current.clear();
-
-    const seen = new Set<string>();
-    for (let rank = 0; rank < 10; rank++) {
-      for (let file = 0; file < 9; file++) {
-        const piece = squares[rank][file];
-        if (!piece) continue;
-
-        const key = `${piece.color}-${piece.kind}-${rank}-${file}`;
-        seen.add(key);
-
-        const mesh = meshes.current.get(key) || Array.from(meshes.current.values()).find(
-          m => m.userData.color === piece.color &&
-               m.userData.kind === piece.kind &&
-               !seen.has(`${m.userData.color}-${m.userData.kind}-${m.userData.rank}-${m.userData.file}`)
-        );
-
-        if (mesh) {
-          mesh.userData.rank = rank;
-          mesh.userData.file = file;
-          mesh.visible = true;
-
-          const x = (file - 4) * fileSize;
-          const z = (rank - 4.5) * rankSize;
-          const y = tableTop + 0.04;
-
-          targetPositions.current.set(key, {
-            pos: new THREE.Vector3(x, y, z),
-            rot: new THREE.Quaternion(),
-          });
-        }
-      }
-    }
-
-    for (const [key, mesh] of meshes.current.entries()) {
-      if (!seen.has(key)) {
-        mesh.visible = false;
-      }
-    }
-  };
-
-  const handlePick = useCallback((id: number) => {
-    if (game.status !== "active" || game.board.turn !== humanColor || thinking) return;
-
-    const scene = ts.current;
-    if (!scene) return;
-
-    const picked = scene.pickables[id];
-    if (!picked) return;
-
-    const rank = picked.userData.rank;
-    const file = picked.userData.file;
-    const pos: Position = { file, rank };
-
-    if (selectedSquare) {
-      const move = legalMoves.find(m => m.to.file === file && m.to.rank === rank);
-      if (move) {
-        handleMove(move);
-      } else {
-        selectSquare(pos);
-      }
-    } else {
-      selectSquare(pos);
-    }
-  }, [game, selectedSquare, legalMoves, humanColor, thinking]);
-
-  const selectSquare = (pos: Position) => {
-    const piece = game.board.squares[pos.rank][pos.file];
-    if (piece && piece.color === humanColor) {
-      setSelectedSquare(pos);
-      const moves = generateLegalMoves(game.board).filter(
-        m => m.from.file === pos.file && m.from.rank === pos.rank
-      );
-      setLegalMoves(moves);
-    } else {
-      setSelectedSquare(null);
-      setLegalMoves([]);
-    }
-  };
-
-  const handleMove = async (move: Move) => {
-    setSelectedSquare(null);
-    setLegalMoves([]);
-
-    const newGame = { ...game, board: { ...game.board }, moves: [...game.moves] };
-    applyMove(newGame, move);
-    setGame(newGame);
-    layoutPieces(newGame.board.squares);
-
-    addLog(`${lt(("color." + humanColor) as any)} ${posToString(move.from)}-${posToString(move.to)}`);
-
-    if (brainsRef.current) {
-      const code = codeOf(moveToString(move));
-      await brainTeach(brainsRef.current, humanSeat, [code], 1);
-    }
-
-    if (newGame.status !== "active") {
-      if (newGame.status === "checkmate") {
-        addLog(lt(("msg." + (newGame.winner === "red" ? "redWins" : "blackWins")) as any));
-      } else {
-        addLog(lt("status.stalemate"));
-      }
-      return;
-    }
-
-    setThinking(true);
-    setTimeout(() => botMove(newGame), 500);
-  };
-
-  const botMove = async (currentGame: GameState) => {
-    const botColor: Color = humanColor === "red" ? "black" : "red";
-    const botSeat = humanColor === "red" ? 2 : 0;
-
-    const candidates = getBestMoves(currentGame.board, 3, 3);
-    if (candidates.length === 0) {
-      setThinking(false);
-      return;
-    }
-
-    let chosenMove = candidates[0].move;
-
-    if (brainsRef.current) {
-      const cands: Candidate<Move>[] = candidates.map(c => ({
-        item: c.move,
-        code: codeOf(moveToString(c.move)),
-      }));
-
-      const result = await brainChoose(brainsRef.current, botSeat, cands, "like");
-      if (result) {
-        chosenMove = result.item;
-      }
-    }
-
-    const newGame = { ...currentGame, board: { ...currentGame.board }, moves: [...currentGame.moves] };
-    applyMove(newGame, chosenMove);
-    setGame(newGame);
-    layoutPieces(newGame.board.squares);
-
-    addLog(`${lt(("color." + botColor) as any)} ${posToString(chosenMove.from)}-${posToString(chosenMove.to)}`);
-
-    if (newGame.status !== "active") {
-      if (newGame.status === "checkmate") {
-        addLog(lt(("msg." + (newGame.winner === "red" ? "redWins" : "blackWins")) as any));
-      } else {
-        addLog(lt("status.stalemate"));
-      }
-    }
-
-    setThinking(false);
-  };
-
-  const addLog = (msg: string) => {
-    setLog(prev => [...prev, msg].slice(-10));
-  };
-
-  const handleNewGame = () => {
-    const newGame = createGame();
-    setGame(newGame);
-    setSelectedSquare(null);
-    setLegalMoves([]);
-    setLog([]);
-    setThinking(false);
-    layoutPieces(newGame.board.squares);
-  };
-
-  const handleBrainsApi = (api: BrainsApi | null) => {
-    brainsRef.current = api;
-  };
-
-  const brainNames = [
-    lt("color.red"),
-    "",
-    lt("color.black"),
-    "",
-  ];
-
-  const statusText = game.status === "active"
-    ? game.board.turn === humanColor
-      ? lt("msg.yourTurn")
-      : lt("action.thinking")
-    : game.status === "checkmate"
-    ? lt(("msg." + (game.winner === "red" ? "redWins" : "blackWins")) as any)
-    : lt(("status." + game.status) as any);
-
-  if (!started) {
-    return (
-      <div className="glass p-10 text-center">
-        <h3 className="t-title">{lt("lobby.title")}</h3>
-        <p className="t-body mx-auto mt-3 max-w-md">{lt("lobby.body")}</p>
-        <button onClick={() => setStarted(true)} className="btn-primary mt-6">{lt("lobby.start")}</button>
-      </div>
-    );
-  }
+  const g = store.game!;
+  const flyName = NAMES[FLY];
+  const inCheck = g.status === "active" && isInCheck(g.board, g.board.turn);
+  const status =
+    g.status === "checkmate" ? `${lt("checkmate")} — ${g.winner === "red" ? lt("youWin", { name: flyName }) : lt("flyWins", { name: flyName })}`
+    : g.status === "stalemate" ? `${lt("stalemate")} — ${g.winner === "red" ? lt("youWin", { name: flyName }) : lt("flyWins", { name: flyName })}`
+    : g.board.turn === "red" ? lt("turn.you") : lt("turn.fly", { name: flyName });
+  const active = g.status === "active" ? (g.board.turn === "red" ? ME : FLY) : null;
+  const names = [lt("you"), NAMES[1], flyName, NAMES[3]];
+  const seats = TABLE_SEATS.filter((s) => s.seat === FLY);
+  const labelOf = (c: number) => labels.current.get(c) ?? "";
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-1 relative" ref={containerRef} />
+    <div className="space-y-2">
+      <div className={TABLE_FRAME}>
+        <XiangqiView store={store} view={view} body={bodyKind} onPick={pick} className="glass-inner h-full w-full" />
 
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-        <div className="pointer-events-auto">
-          <button
-            onClick={handleNewGame}
-            className="px-4 py-2 bg-white/90 hover:bg-white rounded-lg shadow-lg"
-          >
-            {lt("action.newGame")}
-          </button>
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
+          <div className="hud">
+            <span className="t-cap">{lt("red")} · {lt("you")}</span>
+            <span className="t-foot num">{Math.floor(g.moves.length / 2) + 1}. {log.length ? log[log.length - 1] : "…"}</span>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-1.5 pointer-events-auto">
+              <div className="seg seg-sm">
+                {(["seat", "top"] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{lt(v === "seat" ? "view.seat" : "view.top")}</button>)}
+              </div>
+              <div className="seg seg-sm"><button aria-pressed={brains} onClick={() => setBrains(!brains)} title={lt("brains.title")}>{lt("brains")}</button></div>
+            </div>
+            <div className="hud items-end">
+              {[["red", ME], ["black", FLY]].map(([c, s]) => (
+                <span key={c} className={`flex items-baseline gap-2 ${active === s ? "text-label" : "text-label-2"}`}>
+                  {active === s && <span className="live-dot" />}
+                  <span className="t-foot">{names[s as number]}</span>
+                  <span className="t-cap">{lt(c as "red" | "black")}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white/90 rounded-lg shadow-lg px-4 py-2">
-          <div className="font-medium">{statusText}</div>
-          {isInCheck(game.board, game.board.turn) && game.status === "active" && (
-            <div className="text-red-600 text-sm">{lt("msg.check")}</div>
-          )}
+        {wide && <FlyBrains names={names} seats={seats} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
+
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+          <div className="hud pointer-events-none max-w-[60%]">
+            <span className={`t-foot ${inCheck ? "text-orange" : ""}`}>{inCheck ? `${lt("check")} · ` : ""}{status}</span>
+            <span className="t-cap truncate">{log.length > 1 ? `${lt("moves")}: ${log.slice(-6).join("  ")}` : ""}</span>
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {(g.status !== "active" || log.length > 0) && <button className={g.status !== "active" ? "btn-primary text-xs" : "btn text-xs"} onClick={start}>{lt("new")}</button>}
+          </div>
         </div>
       </div>
 
-      {log.length > 0 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-64 bg-white/90 rounded-lg shadow-lg p-3 max-h-40 overflow-y-auto pointer-events-none">
-          {log.map((msg, i) => (
-            <div key={i} className="text-sm py-0.5">{msg}</div>
-          ))}
-        </div>
-      )}
-
-      {wide ? (
-        <FlyBrains
-          names={brainNames}
-          labelOf={(seat) => brainNames[seat]}
-          active={game.status === "active" ? (game.board.turn === humanColor ? humanSeat : (humanSeat + 2) % 4) : null}
-          enabled={true}
-          onApi={handleBrainsApi}
-          variant="overlay"
-          seats={TABLE_SEATS.filter(s => s.seat === 0 || s.seat === 2)}
-        />
-      ) : (
-        <div className="bg-white border-t border-gray-200">
-          <FlyBrains
-            names={brainNames}
-            labelOf={(seat) => brainNames[seat]}
-            active={game.status === "active" ? (game.board.turn === humanColor ? humanSeat : (humanSeat + 2) % 4) : null}
-            enabled={true}
-            onApi={handleBrainsApi}
-            variant="strip"
-            seats={TABLE_SEATS.filter(s => s.seat === 0 || s.seat === 2)}
-          />
-        </div>
-      )}
+      {!wide && <FlyBrains variant="strip" names={names} seats={seats} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} note={lt("brain.note")} />}
+      <p className="t-foot px-1">{lt("caption")}</p>
     </div>
   );
 }
