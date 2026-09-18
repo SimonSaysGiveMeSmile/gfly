@@ -21,7 +21,7 @@ export function HowBody() {
   const { t, list } = useT();
   const rows = list("how.s3.rows");
   return (
-    <article className="mx-auto max-w-[900px] px-5 py-8 lg:px-10 flex flex-col lg:h-full lg:overflow-y-auto">
+    <article className="mx-auto max-w-[900px] px-5 py-8 lg:px-10 flex flex-col">
       <h1 className="t-large">{t("how.title")}</h1>
       <p className="t-body mt-4">{t("how.lead")}</p>
 

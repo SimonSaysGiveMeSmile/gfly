@@ -190,6 +190,8 @@ function ChessView({ store, view, body, onPick, className }: { store: Store; vie
       },
       pickables: () => ts.pickables.length,
       pieces: () => pieces.filter((p) => p.mesh.visible).map((p) => `${p.key}@${p.square}`),
+      state: () => store.game && { turn: store.game.board.turn, status: store.game.status, winner: store.game.winner, moves: store.game.moves.length },
+      legal: () => (store.game ? generateLegalMoves(store.game.board).map((m) => [m.from.file, m.from.rank, m.to.file, m.to.rank]) : []),
       creatures: () => ts.creatures.map((c) => c.seat),
     };
 

@@ -15,14 +15,14 @@ export function LabBody({ product }: { product: Product }) {
   const { t } = useT();
   const text = productText(t, product.slug);
   return (
-    <article className="mx-auto w-full max-w-[1400px] px-4 lg:px-10 py-2 flex flex-col lg:h-full lg:overflow-hidden">
+    <article className="mx-auto w-full max-w-[1400px] px-4 lg:px-10 py-2 flex flex-col">
       <header className="mb-2 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">{t("lab.back")}</Link>
         <h1 className="t-title mt-1">{text.title}</h1>
         <p className="t-foot mt-1 max-w-2xl">{text.summary}</p>
       </header>
 
-      <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0">
+      <div>
         {product.slug === "baseline-room" ? (
           <>
             <Runner />

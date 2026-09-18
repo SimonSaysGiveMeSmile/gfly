@@ -36,7 +36,7 @@ export function ProductCard({ product, index }: { product: Product; index: numbe
         ) : (
           <div className="glass-inner aspect-[16/10] w-full flex-col items-start justify-start p-3">
             {badge}
-            <p className="t-italic mt-auto self-start text-[1.35rem] leading-tight text-label-3">{text.tagline}</p>
+            <p className="t-body mt-auto self-start text-[15px] leading-snug text-label-3">{text.tagline}</p>
           </div>
         )}
         <div className="flex flex-1 flex-col px-2 pb-2 pt-3">

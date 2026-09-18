@@ -56,7 +56,8 @@ body {
 
 /* ---- Type ------------------------------------------------------------ */
 
-.t-display, .t-large, .t-title {
+/* The serif is for the hero and the wordmark only; everything else is the grotesk. */
+.t-display, .t-large {
   font-family: var(--font-display);
   font-weight: 500;
   font-variation-settings: "SOFT" 40, "WONK" 1;
@@ -64,14 +65,14 @@ body {
   text-wrap: balance;
 }
 .t-large { font-size: clamp(2.5rem, 6vw, 4.4rem); line-height: 0.98; font-variation-settings: "SOFT" 60, "WONK" 1, "opsz" 144; }
-.t-title { font-size: 1.85rem; line-height: 1.1; }
+.t-title { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
 .t-head  { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
 .t-body  { font-size: 1.0625rem; color: var(--color-label-2); }
 .t-foot  { font-size: 0.8125rem; color: var(--color-label-2); }
 .t-cap   { font-size: 0.75rem; font-weight: 500; color: var(--color-label-3); letter-spacing: 0.04em; text-transform: uppercase; }
 .t-cap.num, .t-cap .num { text-transform: none; letter-spacing: 0.01em; }
 .num     { font-variant-numeric: tabular-nums; }
-.t-italic { font-family: var(--font-display); font-style: italic; font-weight: 400; font-variation-settings: "SOFT" 80, "WONK" 1; }
+.t-italic { font-style: italic; }
 
 /* ---- Surfaces ---------------------------------------------------------- */
 /* No borders anywhere: panels are a shade lighter than the ground, nothing more. */

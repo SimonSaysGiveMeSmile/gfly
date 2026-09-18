@@ -15,7 +15,7 @@ const FACTS = [
 export function HomeBody() {
   const { t } = useT();
   return (
-    <div className="mx-auto max-w-[1400px] px-5 lg:px-10 flex flex-col lg:h-full lg:overflow-hidden">
+    <div className="mx-auto max-w-[1400px] px-5 lg:px-10 flex flex-col">
       <section className="py-10 lg:py-16 flex-shrink-0">
         <p className="t-cap rise">{t("home.kicker")}</p>
         <h1 className="t-large rise mt-5 max-w-[14ch]" style={{ animationDelay: "60ms" }}>
@@ -33,7 +33,7 @@ export function HomeBody() {
           <dl className="rise grid grid-cols-2 gap-x-8 gap-y-6 lg:col-span-6 lg:pl-8" style={{ animationDelay: "240ms" }}>
             {FACTS.map((f) => (
               <div key={f.k}>
-                <dd className="num t-display whitespace-nowrap text-[1.9rem] leading-none lg:text-[2.3rem]">{f.v}</dd>
+                <dd className="num whitespace-nowrap text-[1.8rem] font-semibold leading-none tracking-tight lg:text-[2.1rem]">{f.v}</dd>
                 <dt className="t-cap mt-2">{t(f.k)}</dt>
               </div>
             ))}
@@ -42,10 +42,10 @@ export function HomeBody() {
         </div>
       </section>
 
-      <section className="pb-12 lg:flex-1 lg:overflow-y-auto lg:min-h-0">
+      <section className="pb-12">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <h2 className="t-title">{t("home.experiments")}</h2>
-          <p className="t-italic text-[1.15rem] text-label-2">{t("home.experimentsLead")}</p>
+          <p className="t-body">{t("home.experimentsLead")}</p>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRODUCTS.map((p, i) => <ProductCard key={p.slug} product={p} index={i} />)}

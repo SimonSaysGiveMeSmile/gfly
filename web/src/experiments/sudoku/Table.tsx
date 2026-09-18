@@ -155,7 +155,10 @@ function SudokuView({ store, view, body, onPick, className }: { store: Store; vi
         if (store.actor !== null) ts.reach(store.actor);
       }
     };
-    (window as unknown as { __gflySudoku?: unknown }).__gflySudoku = { cell: (row: number, col: number) => ts.toScreen(cellAt(row, col, tableTop)) };
+    (window as unknown as { __gflySudoku?: unknown }).__gflySudoku = {
+      cell: (row: number, col: number) => ts.toScreen(cellAt(row, col, tableTop)),
+      board: () => store.game && { initial: store.game.initial, current: store.game.current, status: store.game.status, who: store.who },
+    };
 
     return () => { disposed = true; tex.dispose(); ts.dispose(); };
   }, [store, body]);
@@ -174,6 +177,7 @@ export function SudokuTable() {
   const [turn, setTurn] = useState(ME);                    // whose digit is next
   const [view, setView] = useState<View>("seat");
   const [brains, setBrains] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const brainsApi = useRef<BrainsApi | null>(null);
   const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
   const labels = useRef(new Map<number, string>());
@@ -210,7 +214,14 @@ export function SudokuTable() {
       const api = brainsApi.current;
       const next = seat === 3 ? ME : seat + 1;
       if (cands.length === 0) { setTurn(next); return; }
-      if (!api?.ready(seat)) { write(cands[0].row, cands[0].col, cands[0].num, seat + 1); setTurn(next); return; }
+      if (!api?.ready(seat)) {
+        // No brain: only a forced digit, a cell with exactly one candidate, is safe to write. Otherwise pass.
+        const forced = cands.find((c) => getCandidates(g.current, c.row, c.col).length === 1);
+        if (forced) { setNote(null); write(forced.row, forced.col, forced.num, seat + 1); }
+        else setNote(lt("turn.pass", { name: NAMES[seat] }));
+        setTurn(next);
+        return;
+      }
       const code = (c: (typeof cands)[number]) => { const k = codeOf(`${c.num}@${getCandidates(g.current, c.row, c.col).length}`); labels.current.set(k, String(c.num)); return k; };
       const r = await brainChoose(api, seat, cands.map((c) => ({ item: c, code: code(c) })), "like");
       if (cancelled || store.game !== g) return;
@@ -227,7 +238,7 @@ export function SudokuTable() {
   const enter = useCallback((n: number) => {
     const g = store.game, sel = store.selected;
     if (!g || !sel || turn !== ME || g.status !== "active" || g.initial[sel.row][sel.col] !== 0) return;
-    if (write(sel.row, sel.col, n, 1) && n !== 0) setTurn(1);
+    if (write(sel.row, sel.col, n, 1) && n !== 0) { setNote(null); setTurn(1); }
   }, [store, turn, write]);
 
   const pick = useCallback((cell: number) => {
@@ -301,7 +312,7 @@ export function SudokuTable() {
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
           <div className="hud pointer-events-none max-w-[45%]">
             <span className="t-foot">{status}</span>
-            <span className="t-cap">{lt("keys")}</span>
+            <span className="t-cap">{note ?? lt("keys")}</span>
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
             {g.status === "won" && <button className="btn-primary text-xs" onClick={() => start(difficulty)}>{lt("new")}</button>}

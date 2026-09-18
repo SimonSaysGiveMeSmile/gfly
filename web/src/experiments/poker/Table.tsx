@@ -162,7 +162,10 @@ function PokerView({ store, view, body, className }: { store: Store; view: View;
       ease([...meshes.values()].map((m) => [m, targets.get(m)]), dt, 7);
     };
     // Where things are on screen, for checks from outside (tests, the console).
-    (window as unknown as { __gflyPoker?: unknown }).__gflyPoker = { creatures: () => ts.creatures.map((c) => ({ seat: c.seat, ...ts.toScreen(c.body.root.getWorldPosition(new THREE.Vector3())) })) };
+    (window as unknown as { __gflyPoker?: unknown }).__gflyPoker = {
+      creatures: () => ts.creatures.map((c) => ({ seat: c.seat, ...ts.toScreen(c.body.root.getWorldPosition(new THREE.Vector3())) })),
+      state: () => store.game && { hand: store.hand, phase: store.game.phase, status: store.game.status, current: store.game.currentPlayer, pot: store.game.pot, winner: store.game.winner, chips: store.game.players.map((p) => p.chips) },
+    };
 
     return () => {
       disposed = true;

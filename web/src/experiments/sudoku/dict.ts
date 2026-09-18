@@ -2,7 +2,7 @@ import type { LocalDict } from "@/lib/i18n";
 
 export type SudokuKey =
   | "lobby.title" | "lobby.body" | "lobby.sit" | "easy" | "medium" | "hard"
-  | "you" | "turn.you" | "turn.fly" | "solved" | "filled" | "conflicts" | "new" | "clear" | "keys"
+  | "you" | "turn.you" | "turn.fly" | "turn.pass" | "solved" | "filled" | "conflicts" | "new" | "clear" | "keys"
   | "view.seat" | "view.top" | "brains" | "brains.title" | "caption" | "brain.note" | "safe" | "guess";
 
 export const dict: LocalDict<SudokuKey> = {
@@ -11,7 +11,7 @@ export const dict: LocalDict<SudokuKey> = {
     "lobby.body": "A paper sudoku on the tea table, filled in together. You write a digit, then each fly writes one in turn. It loads the flies and the furniture once, about 3 MB.",
     "lobby.sit": "Sit down",
     easy: "Easy", medium: "Medium", hard: "Hard",
-    you: "You", "turn.you": "Your digit", "turn.fly": "{name} is writing",
+    you: "You", "turn.you": "Your digit", "turn.fly": "{name} is writing", "turn.pass": "{name} found nothing safe to write and passed.",
     solved: "Solved, together.", filled: "{n} of 81", conflicts: "{n} conflicts",
     new: "New puzzle", clear: "Clear", keys: "Tap a cell, then a digit. Keys 1–9 work too.",
     "view.seat": "Seat", "view.top": "Above", brains: "Brains",
@@ -25,7 +25,7 @@ export const dict: LocalDict<SudokuKey> = {
     "lobby.body": "茶桌上的纸质数独，大家一起填。你写一个数字，然后三只果蝇轮流各写一个。首次加载果蝇和家具约 3 MB。",
     "lobby.sit": "坐下",
     easy: "简单", medium: "中等", hard: "困难",
-    you: "你", "turn.you": "该你写了", "turn.fly": "{name} 正在写",
+    you: "你", "turn.you": "该你写了", "turn.fly": "{name} 正在写", "turn.pass": "{name} 没有找到可以安全写下的数字，跳过。",
     solved: "一起解开了。", filled: "已填 {n}/81", conflicts: "{n} 处冲突",
     new: "新题", clear: "清除", keys: "点一个格子，再点一个数字，也可以按 1–9 键。",
     "view.seat": "座位", "view.top": "俯视", brains: "大脑",
@@ -39,7 +39,7 @@ export const dict: LocalDict<SudokuKey> = {
     "lobby.body": "Çay masasında kağız sudoku, birlikdə doldurulur. Siz bir rəqəm yazırsınız, sonra hər milçək növbə ilə birini yazır. Milçəklər və mebel bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Otur",
     easy: "Asan", medium: "Orta", hard: "Çətin",
-    you: "Siz", "turn.you": "Sizin rəqəminiz", "turn.fly": "{name} yazır",
+    you: "Siz", "turn.you": "Sizin rəqəminiz", "turn.fly": "{name} yazır", "turn.pass": "{name} yazmağa təhlükəsiz heç nə tapmadı və keçdi.",
     solved: "Birlikdə həll olundu.", filled: "81-dən {n}", conflicts: "{n} ziddiyyət",
     new: "Yeni tapmaca", clear: "Təmizlə", keys: "Xanaya, sonra rəqəmə toxunun. 1–9 düymələri də işləyir.",
     "view.seat": "Oturacaq", "view.top": "Yuxarıdan", brains: "Beyinlər",

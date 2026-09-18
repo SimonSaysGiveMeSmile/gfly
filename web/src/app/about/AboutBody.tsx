@@ -7,7 +7,7 @@ export function AboutBody() {
   const { t } = useT();
   const adding = t("about.adding.body", { code: "\u0000" }).split("\u0000");
   return (
-    <article className="mx-auto max-w-[900px] px-5 py-8 lg:px-10 flex flex-col lg:h-full lg:overflow-y-auto">
+    <article className="mx-auto max-w-[900px] px-5 py-8 lg:px-10 flex flex-col">
       <h1 className="t-large">{t("about.title")}</h1>
       <div className="t-body mt-4 space-y-4">
         <p>{t("about.p1")}</p>
