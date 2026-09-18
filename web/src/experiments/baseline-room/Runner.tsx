@@ -84,74 +84,75 @@ export function Runner() {
   const verdict = slow?.assay;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Views ------------------------------------------------------- */}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card title="The room" hint="Drag to look around. The fly is shown about 60× life size.">
+      <div className="grid gap-2 lg:grid-cols-3">
+        <Card title="The room" hint="Drag to look around">
           <RoomView bus={bus} className="glass-inner aspect-square w-full" />
         </Card>
-        <Card className="flex flex-col" title="The brain" hint="Each dot is a real neuron. It lights up when it fires.">
+        <Card className="flex flex-col" title="The brain" hint="Each dot is a neuron">
           <BrainView bus={bus} className="glass-inner aspect-square w-full" />
         </Card>
-        <Card className="flex flex-col" title="The anatomy" hint="Drag to rotate. The body mesh from Google's flybody model.">
+        <Card className="flex flex-col" title="The anatomy" hint="Drag to rotate">
           <AnatomyView className="glass-inner aspect-square w-full" />
         </Card>
       </div>
 
-      <Card title="The eyes" hint="Left and right eye, about 880 columns each. What it sees, and what the first cells do with it.">
-        <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
-      </Card>
+      {/* Eyes + Controls Row ---------------------------------------------------- */}
+      <div className="grid gap-2 lg:grid-cols-12">
+        <Card className="lg:col-span-6" title="The eyes" hint="What it sees">
+          <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
+        </Card>
 
-      {/* Controls ---------------------------------------------------- */}
-      <div className="grid gap-3 lg:grid-cols-12">
-        <Card className="lg:col-span-4" title="Controls">
+        <Card className="lg:col-span-3" title="Controls">
           <div className="flex flex-wrap gap-2">
             <button onClick={toggleRun} className="btn-primary">{running ? "Pause" : "Run"}</button>
             <button onClick={() => send({ type: "reset" })} className="btn">Reset</button>
-            <button onClick={() => send({ type: "threat" })} className="btn">Swat at it</button>
+            <button onClick={() => send({ type: "threat" })} className="btn">Threat</button>
           </div>
-          <p className="t-cap mt-5 mb-2">Turn off part of the brain</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="t-cap mt-3 mb-2">Lesions</p>
+          <div className="flex flex-wrap gap-1.5">
             {LESIONS.map((l) => (
-              <button key={l.id} onClick={() => toggleLesion(l.id)} className={lesion === l.id ? "btn-danger" : "btn"}>
+              <button key={l.id} onClick={() => toggleLesion(l.id)} className={lesion === l.id ? "btn-danger text-xs" : "btn text-xs"}>
                 {l.label}
               </button>
             ))}
           </div>
         </Card>
 
-        <Card className="lg:col-span-5" title="Tests" hint="Pick one. It runs until you pick another.">
+        <Card className="lg:col-span-3" title="Stats">
+          <dl className="space-y-1.5">
+            <Stat k="Neurons" v={ready.neurons.toLocaleString()} />
+            <Stat k="Speed" v={slow && slow.realtime >= 0 ? `${slow.realtime.toFixed(2)}×` : "…"} hot={!!slow && slow.realtime > 0.8} />
+            <Stat k="Rate" v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
+          </dl>
+        </Card>
+      </div>
+
+      {/* Tests Row ---------------------------------------------------- */}
+      <div className="grid gap-2 lg:grid-cols-12">
+        <Card className="lg:col-span-6" title="Tests" hint="Pick one">
           <div className="grid grid-cols-2 gap-2">
             {TESTS.map((t) => (
-              <button key={t.id} onClick={() => pickTest(assay === t.id ? null : t.id)} className={assay === t.id ? "btn-on" : "btn"} style={{ textAlign: "left" }}>
+              <button key={t.id} onClick={() => pickTest(assay === t.id ? null : t.id)} className={assay === t.id ? "btn-on text-sm" : "btn text-sm"} style={{ textAlign: "left" }}>
                 {t.name}
               </button>
             ))}
           </div>
           {verdict && (
-            <div className="mt-4 border-t border-line pt-4">
+            <div className="mt-3 border-t border-line pt-3">
               <Verdict v={verdict.verdict} />
               <p className="t-foot mt-2">{verdict.detail}</p>
-              <p className="t-cap mt-2">Expected: {verdict.expected}</p>
-              <Trace series={verdict.series} labels={verdict.labels} />
             </div>
           )}
         </Card>
 
-        <Card className="lg:col-span-3" title="Numbers">
-          <dl className="space-y-2">
-            <Stat k="Neurons" v={ready.neurons.toLocaleString()} />
-            <Stat k="Connections" v={ready.edges.toLocaleString()} />
-            <Stat k="Loaded in" v={`${(ready.loadMs / 1000).toFixed(1)} s`} />
-            <Stat k="Speed" v={slow && slow.realtime >= 0 ? `${slow.realtime.toFixed(2)}× real time` : "measuring…"} hot={!!slow && slow.realtime > 0.8} />
-            <Stat k="Average rate" v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
-          </dl>
-          <p className="t-cap mt-5 mb-2">Firing, by group</p>
+        <Card className="lg:col-span-6" title="Activity">
           <div className="space-y-2">
-            <Bar label="Steering, left" hz={r?.descendingL} max={30} />
-            <Bar label="Steering, right" hz={r?.descendingR} max={30} />
-            <Bar label="Motion cells" hz={r ? (r.t4 + r.t5) / 2 : 0} max={20} />
-            <Bar label="Loom cells" hz={r ? (r.lplc2L + r.lplc2R) / 2 : 0} max={40} />
+            <Bar label="Steering L" hz={r?.descendingL} max={30} />
+            <Bar label="Steering R" hz={r?.descendingR} max={30} />
+            <Bar label="Motion" hz={r ? (r.t4 + r.t5) / 2 : 0} max={20} />
+            <Bar label="Loom" hz={r ? (r.lplc2L + r.lplc2R) / 2 : 0} max={40} />
             <Bar label="Giant Fiber" hz={r?.giantFiber} max={40} accent />
           </div>
         </Card>
@@ -164,10 +165,10 @@ export function Runner() {
 
 function Card({ title, hint, className, children }: { title: string; hint?: string; className?: string; children: React.ReactNode }) {
   return (
-    <section className={`glass p-3 ${className ?? ""}`}>
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-1">
-        <h3 className="t-head">{title}</h3>
-        {hint && <p className="t-cap hidden text-right sm:block">{hint}</p>}
+    <section className={`glass p-2 ${className ?? ""}`}>
+      <div className="mb-1.5 flex items-baseline justify-between gap-2 px-1">
+        <h3 className="t-head text-sm">{title}</h3>
+        {hint && <p className="t-cap text-right">{hint}</p>}
       </div>
       {children}
     </section>

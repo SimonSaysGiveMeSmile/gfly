@@ -19,27 +19,11 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="mx-auto h-full max-w-[1400px] px-6 py-3 lg:px-10 flex flex-col overflow-hidden">
-      <header className="mb-3 flex-shrink-0">
+    <article className="h-full w-full px-3 py-2 flex flex-col overflow-hidden">
+      <header className="mb-2 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
-        <h1 className="t-large mt-2">{product.title}</h1>
-        <p className="t-body mt-2 max-w-2xl">{product.summary}</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="glass p-3">
-            <p className="t-cap">What it claims</p>
-            <p className="mt-2 text-[15px]">{product.claim}</p>
-          </div>
-          <div className="glass p-3">
-            <p className="t-cap">Learning</p>
-            <p className="t-body mt-2 text-[15px]">{LEARNING_COPY[product.learning]}</p>
-          </div>
-          <div className="glass p-3">
-            <p className="t-cap">Parts of the brain used</p>
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {product.circuits.map((c) => <li key={c} className="pill pill-gray">{c}</li>)}
-            </ul>
-          </div>
-        </div>
+        <h1 className="t-title mt-1">{product.title}</h1>
+        <p className="t-foot mt-1 max-w-2xl">{product.summary}</p>
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0">
