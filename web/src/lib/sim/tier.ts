@@ -8,10 +8,11 @@ import { useSyncExternalStore } from "react";
 
 export type Tier = 1 | 5 | 10;
 
-export const TIERS: { tier: Tier; label: string; edges: string; size: string; note: string }[] = [
-  { tier: 10, label: "Light", edges: "2.7M connections", size: "9 MB", note: "Pairs with 10 or more synapses. Runs faster than real time." },
-  { tier: 5, label: "Standard", edges: "6.2M connections", size: "20 MB", note: "Pairs with 5 or more synapses, 72% of all synapses. Real time on a laptop." },
-  { tier: 1, label: "Full", edges: "25.6M connections", size: "75 MB", note: "Every significant connection in the release. About a quarter of real time, and a lot of memory." },
+/** Labels and notes are translated under tier.<id> in src/lib/i18n. */
+export const TIERS: { tier: Tier; id: "light" | "standard" | "full"; label: string; edges: string; size: string }[] = [
+  { tier: 10, id: "light", label: "Light", edges: "2.7M", size: "9 MB" },
+  { tier: 5, id: "standard", label: "Standard", edges: "6.2M", size: "20 MB" },
+  { tier: 1, id: "full", label: "Full", edges: "25.6M", size: "75 MB" },
 ];
 
 const KEY = "gfly.tier";

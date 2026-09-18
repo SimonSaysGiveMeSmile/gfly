@@ -8,17 +8,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MahjongView, TableStore, type TableView } from "./MahjongView";
 import {
-  canSelfWin, claimOptions, concealedKongs, declareKong, discard, draw, KIND_LABELS, newGame, resolveClaims, selfWin,
-  type Claim, type Game, type Kind,
+  canSelfWin, claimOptions, concealedKongs, declareKong, discard, draw, newGame, resolveClaims, selfWin,
+  type Claim, type Game, type Kind, type Msg,
 } from "./engine";
 import { makeBot, type Bot } from "./bots";
 import { FlyBrains, type BrainsApi } from "./FlyBrains";
+import { tileName, useT, type Key, type T } from "@/lib/i18n";
 
 const NAMES = ["You", "Otto", "Mira", "Kip"];
 const ME = 0;
-const WINDS = ["East", "South", "West", "North"];
+const WINDS: Key[] = ["mj.wind.east", "mj.wind.south", "mj.wind.west", "mj.wind.north"];
+
+/** Table talk into words, in the current language. */
+function say(t: T, m: Msg): string {
+  const name = (s: number | undefined) => (s === undefined ? "" : s === ME ? t("mj.you") : NAMES[s]);
+  return t(m.key as Key, {
+    name: name(m.seat), from: name(m.from), n: m.n ?? "", fan: m.fan ?? "",
+    tile: m.tile === undefined ? "" : tileName(t, m.tile),
+    call: m.call ? t(`mj.${m.call}` as Key) : "",
+    reasons: m.reasons ? m.reasons.map((r) => say(t, r)).join(", ") : "",
+  });
+}
 
 export function Table() {
+  const { t } = useT();
   const store = useMemo(() => new TableStore(), []);
   const gameRef = useRef<Game | null>(null);
   const bots = useMemo<Bot[]>(() => [0, 1, 2, 3].map((i) => makeBot(0x9e3779b9 * (i + 1))), []);
@@ -98,12 +111,7 @@ export function Table() {
         const kinds = [...new Set(ph.winningHand.map((t) => t.kind))];
         (async () => { for (const k of kinds) await api.teach(winner, k, 1); })();
       }
-      const fed = /wins on (\w+)'s (.+?)\./.exec(ph.reason);
-      if (fed) {
-        const loser = NAMES.indexOf(fed[1]);
-        const kind = KIND_LABELS.indexOf(fed[2]);
-        if (loser > 0 && kind >= 0 && api.ready(loser)) api.teach(loser, kind, -1);
-      }
+      if (ph.fedBy && ph.fedBy.seat !== ME && api.ready(ph.fedBy.seat)) api.teach(ph.fedBy.seat, ph.fedBy.kind, -1);
     } else if (ph.kind === "claim") {
       const answers = new Map<number, Claim>();
       for (const s of ph.pending) if (s !== ME) answers.set(s, bots[s].chooseClaim(g, s));
@@ -137,18 +145,19 @@ export function Table() {
   const win = () => { const g = gameRef.current; if (g && canSelfWin(g)) { selfWin(g); bump(ME); } };
   const kong = (k: Kind) => { const g = gameRef.current; if (g) { declareKong(g, k); bump(ME); } };
 
-  if (!g) return <Lobby onStart={() => start()} />;
+  if (!g) return <Lobby onStart={() => start()} t={t} />;
 
   const ph = g.phase;
   const myTurn = ph.kind === "discard" && ph.seat === ME;
   const kongs = myTurn ? concealedKongs(g!) : [];
   const hoverTile = hover !== null ? g.players[ME].hand.find((t) => t.id === hover) : null;
+  const nameOf = (s: number) => (s === ME ? t("mj.you") : NAMES[s]);
   const status =
-    ph.kind === "over" ? ph.reason
-    : myClaim ? `${NAMES[(ph as { discarder: number }).discarder]} threw ${KIND_LABELS[(ph as { tile: { kind: number } }).tile.kind]}.`
-    : myTurn ? (hoverTile ? `Throw ${KIND_LABELS[hoverTile.kind]}?` : "Your turn. Pick a tile to throw.")
-    : ph.kind === "discard" ? (brains ? `${NAMES[ph.seat]} is looking at its tiles…` : `${NAMES[ph.seat]} is thinking…`)
-    : ph.kind === "draw" ? `${NAMES[ph.seat]} draws.`
+    ph.kind === "over" ? say(t, ph.reason)
+    : myClaim ? t("mj.status.threw", { name: nameOf((ph as { discarder: number }).discarder), tile: tileName(t, (ph as { tile: { kind: number } }).tile.kind) })
+    : myTurn ? (hoverTile ? t("mj.status.throw", { tile: tileName(t, hoverTile.kind) }) : t("mj.status.yourTurn"))
+    : ph.kind === "discard" ? t(brains ? "mj.status.looking" : "mj.status.thinking", { name: nameOf(ph.seat) })
+    : ph.kind === "draw" ? t("mj.status.draws", { name: nameOf(ph.seat) })
     : "…";
 
   return (
@@ -159,18 +168,18 @@ export function Table() {
         {/* Top strip: round, wall, scores. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3">
           <div className="hud">
-            <span className="t-cap">Hand {g.hand} · {WINDS[g.round - 27]} round</span>
-            <span className="num t-foot">{g.wall.length} tiles left</span>
+            <span className="t-cap">{t("mj.hand", { n: g.hand, wind: t(WINDS[g.round - 27]) })}</span>
+            <span className="num t-foot">{t("mj.tilesLeft", { n: g.wall.length })}</span>
           </div>
           <div className="flex flex-col items-end gap-2">
           <div className="flex gap-1.5 pointer-events-auto">
             <div className="seg seg-sm">
               {(["seat", "desk"] as const).map((v) => (
-                <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === "seat" ? "Seat" : "Desk"}</button>
+                <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{t(v === "seat" ? "mj.view.seat" : "mj.view.desk")}</button>
               ))}
             </div>
             <div className="seg seg-sm">
-              <button aria-pressed={brains} onClick={() => setBrains(!brains)} title="Run a live connectome for each fly. Three extra threads.">Brains</button>
+              <button aria-pressed={brains} onClick={() => setBrains(!brains)} title={t("mj.brains.title")}>{t("mj.brains")}</button>
             </div>
           </div>
           <div className="hud items-end">
@@ -179,7 +188,7 @@ export function Table() {
               return (
                 <span key={p.seat} className={`flex items-baseline gap-2 ${active ? "text-label" : "text-label-2"}`}>
                   {active && <span className="live-dot" />}
-                  <span className="t-foot">{p.name}</span>
+                  <span className="t-foot">{nameOf(p.seat)}</span>
                   <span className={`num t-foot ${p.score > 0 ? "text-green" : p.score < 0 ? "text-orange" : ""}`}>{p.score > 0 ? "+" : ""}{p.score}</span>
                 </span>
               );
@@ -188,51 +197,46 @@ export function Table() {
           </div>
         </div>
 
-        <FlyBrains names={NAMES} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
+        <FlyBrains names={[t("mj.you"), ...NAMES.slice(1)]} labelOf={(code) => tileName(t, code)} enabled={brains} onApi={onApi} active={ph.kind === "discard" || ph.kind === "draw" ? ph.seat : null} />
 
         {/* Bottom strip: what is happening, and what you can do. */}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
           <div className="hud pointer-events-none max-w-[60%]">
             <span className="t-foot">{status}</span>
-            <span className="t-cap">{g.log.slice(-2, -1)[0] ?? ""}</span>
+            <span className="t-cap">{g.log.length > 1 ? say(t, g.log[g.log.length - 2]) : ""}</span>
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
             {ph.kind === "over" && (
               <button className="btn-primary text-xs" onClick={() => start((g.dealer + (ph.winner === g.dealer ? 0 : 1)) % 4, g.players.map((p) => p.score), g.hand + 1)}>
-                Next hand
+                {t("mj.next")}
               </button>
             )}
-            {myTurn && canSelfWin(g!) && <button className="btn-primary text-xs" onClick={win}>Win</button>}
-            {kongs.map((k) => <button key={k} className="btn text-xs" onClick={() => kong(k)}>Kong {KIND_LABELS[k]}</button>)}
+            {myTurn && canSelfWin(g!) && <button className="btn-primary text-xs" onClick={win}>{t("mj.win")}</button>}
+            {kongs.map((k) => <button key={k} className="btn text-xs" onClick={() => kong(k)}>{t("mj.kong")} {tileName(t, k)}</button>)}
             {myClaim?.map((c, i) => (
               <button
                 key={i}
                 className={c.kind === "win" ? "btn-primary text-xs" : c.kind === "pass" ? "btn text-xs" : "btn-on text-xs"}
                 onClick={() => answer(c)}
               >
-                {c.kind === "chow" ? `Chow ${c.tiles.map((t) => KIND_LABELS[t.kind].replace(/ of .*/, "")).join("·")}` : c.kind[0].toUpperCase() + c.kind.slice(1)}
+                {c.kind === "chow" ? `${t("mj.chow")} ${c.tiles.map((x) => tileName(t, x.kind)).join(" · ")}` : t(`mj.${c.kind}` as Key)}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <p className="t-foot px-1">
-        Hong Kong rules, four sets and a pair. Chow from the fly on your left, pung and kong from anyone. Hover a tile to lift it, click to throw it.
-        The three flies play a fixed strategy for now; the mushroom-body learner that replaces them is the point of this experiment.
-      </p>
+      <p className="t-foot px-1">{t("mj.caption")}</p>
     </div>
   );
 }
 
-function Lobby({ onStart }: { onStart: () => void }) {
+function Lobby({ onStart, t }: { onStart: () => void; t: T }) {
   return (
     <div className="glass p-10 text-center">
-      <h3 className="t-title">Take a seat</h3>
-      <p className="t-body mx-auto mt-3 max-w-md">
-        A table, a lamp, three flies on stools. It loads the fly, the furniture and the tiles once, about 12 MB, then plays on your device.
-      </p>
-      <button onClick={onStart} className="btn-primary mt-6">Sit down</button>
+      <h3 className="t-title">{t("mj.lobby.title")}</h3>
+      <p className="t-body mx-auto mt-3 max-w-md">{t("mj.lobby.body")}</p>
+      <button onClick={onStart} className="btn-primary mt-6">{t("mj.lobby.sit")}</button>
     </div>
   );
 }

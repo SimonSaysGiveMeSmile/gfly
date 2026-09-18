@@ -43,11 +43,17 @@ export interface Player {
   score: number;
 }
 
+/**
+ * A line of table talk, as data. The page turns it into words in whatever
+ * language it is showing: `key` names the sentence, the rest fill it in.
+ */
+export interface Msg { key: string; seat?: number; from?: number; tile?: Kind; n?: number; fan?: number; call?: MeldKind; reasons?: Msg[] }
+
 export type Phase =
   | { kind: "draw"; seat: number }
   | { kind: "discard"; seat: number }
   | { kind: "claim"; discarder: number; tile: Tile; /** seats still to answer, in priority order */ pending: number[] }
-  | { kind: "over"; winner: number | null; fan: number; reason: string; winningHand?: Tile[] };
+  | { kind: "over"; winner: number | null; fan: number; reason: Msg; winningHand?: Tile[]; /** who threw the winning tile, and what it was */ fedBy?: { seat: number; kind: Kind } };
 
 export interface Game {
   wall: Tile[];
@@ -59,7 +65,7 @@ export interface Game {
   turn: number;
   /** The last discard on the table, for the claim window. */
   lastDiscard: { seat: number; tile: Tile } | null;
-  log: string[];
+  log: Msg[];
   hand: number;
 }
 
@@ -78,7 +84,7 @@ export function newGame(names: string[], seed = Date.now(), dealer = 0, scores?:
   const players: Player[] = names.map((name, seat) => ({ seat, name, hand: [], melds: [], discards: [], score: scores?.[seat] ?? 0 }));
   for (const p of players) p.hand = sortTiles(wall.splice(0, HAND_SIZE));
   const g: Game = { wall, players, phase: { kind: "draw", seat: dealer }, round: 27, dealer, turn: dealer, lastDiscard: null, log: [], hand: handNo };
-  g.log.push(`Hand ${handNo}. ${names[dealer]} deals.`);
+  g.log.push({ key: "mj.log.deals", n: handNo, seat: dealer });
   return g;
 }
 
@@ -171,29 +177,29 @@ export function waits(concealed: Kind[], meldCount: number): Kind[] {
 }
 
 /** Fan for a winning hand. Enough to reward shape, not a full rulebook. */
-export function scoreHand(p: Player, winTile: Kind, selfDrawn: boolean, round: Kind): { fan: number; reasons: string[] } {
+export function scoreHand(p: Player, winTile: Kind, selfDrawn: boolean, round: Kind): { fan: number; reasons: Msg[] } {
   const all = [...p.hand.map((t) => t.kind), ...p.melds.flatMap((m) => m.tiles.map((t) => t.kind))];
-  const reasons: string[] = [];
+  const reasons: Msg[] = [];
   let fan = 0;
   const c = countKinds(all);
   const suits = new Set(all.filter((k) => !isHonour(k)).map(suitOf));
   const honours = all.some(isHonour);
-  if (selfDrawn) { fan += 1; reasons.push("Self drawn"); }
-  if (p.melds.length === 0) { fan += 1; reasons.push("Concealed hand"); }
+  if (selfDrawn) { fan += 1; reasons.push({ key: "mj.fan.selfDrawn" }); }
+  if (p.melds.length === 0) { fan += 1; reasons.push({ key: "mj.fan.concealed" }); }
   const seatWind = 27 + ((p.seat - 0 + 4) % 4);
-  for (const k of [31, 32, 33]) if (c[k] >= 3) { fan += 1; reasons.push(`${KIND_LABELS[k]} pung`); }
-  if (c[round] >= 3) { fan += 1; reasons.push("Round wind"); }
-  if (c[seatWind] >= 3 && seatWind !== round) { fan += 1; reasons.push("Seat wind"); }
-  if (suits.size === 1 && !honours) { fan += 6; reasons.push("Pure one suit"); }
-  else if (suits.size === 1) { fan += 3; reasons.push("Half flush"); }
-  else if (suits.size === 0) { fan += 10; reasons.push("All honours"); }
+  for (const k of [31, 32, 33]) if (c[k] >= 3) { fan += 1; reasons.push({ key: "mj.fan.dragonPung", tile: k }); }
+  if (c[round] >= 3) { fan += 1; reasons.push({ key: "mj.fan.roundWind" }); }
+  if (c[seatWind] >= 3 && seatWind !== round) { fan += 1; reasons.push({ key: "mj.fan.seatWind" }); }
+  if (suits.size === 1 && !honours) { fan += 6; reasons.push({ key: "mj.fan.pure" }); }
+  else if (suits.size === 1) { fan += 3; reasons.push({ key: "mj.fan.half" }); }
+  else if (suits.size === 0) { fan += 10; reasons.push({ key: "mj.fan.allHonours" }); }
   const allPungs = p.melds.every((m) => m.kind !== "chow") && (() => {
     const cc = countKinds(p.hand.map((t) => t.kind));
     let pair = 0, ok = true;
     for (let k = 0; k < 34; k++) { if (cc[k] === 2) pair++; else if (cc[k] !== 0 && cc[k] !== 3 && cc[k] !== 4) ok = false; }
     return ok && pair === 1;
   })();
-  if (allPungs) { fan += 3; reasons.push("All pungs"); }
+  if (allPungs) { fan += 3; reasons.push({ key: "mj.fan.allPungs" }); }
   const allChows = p.melds.every((m) => m.kind === "chow") && !honours && (() => {
     const cc = countKinds(p.hand.map((t) => t.kind));
     let pairK = -1; for (let k = 0; k < 34; k++) if (cc[k] >= 2) pairK = k;
@@ -202,9 +208,9 @@ export function scoreHand(p: Player, winTile: Kind, selfDrawn: boolean, round: K
     const chowsOnly = (i: number): boolean => { while (i < 34 && cc[i] === 0) i++; if (i === 34) return true; if (i >= 27 || rankOf(i) > 7 || !cc[i + 1] || !cc[i + 2]) return false; cc[i]--; cc[i + 1]--; cc[i + 2]--; const r = chowsOnly(i); cc[i]++; cc[i + 1]++; cc[i + 2]++; return r; };
     return chowsOnly(0);
   })();
-  if (allChows) { fan += 1; reasons.push("All chows"); }
-  if (all.every((k) => isTerminal(k) || isHonour(k))) { fan += 4; reasons.push("All terminals and honours"); }
-  if (fan === 0) { fan = 1; reasons.push("Chicken hand"); }
+  if (allChows) { fan += 1; reasons.push({ key: "mj.fan.allChows" }); }
+  if (all.every((k) => isTerminal(k) || isHonour(k))) { fan += 4; reasons.push({ key: "mj.fan.terminals" }); }
+  if (fan === 0) { fan = 1; reasons.push({ key: "mj.fan.chicken" }); }
   void winTile;
   return { fan, reasons };
 }
@@ -256,8 +262,8 @@ export function draw(g: Game): Tile | null {
   if (g.phase.kind !== "draw") return null;
   const seat = g.phase.seat;
   if (g.wall.length === 0) {
-    g.phase = { kind: "over", winner: null, fan: 0, reason: "The wall ran out. Nobody wins this hand." };
-    g.log.push("Wall exhausted.");
+    g.phase = { kind: "over", winner: null, fan: 0, reason: { key: "mj.over.wallOut" } };
+    g.log.push({ key: "mj.log.wallOut" });
     return null;
   }
   const t = g.wall.shift()!;
@@ -281,8 +287,8 @@ export function selfWin(g: Game) {
   const last = p.hand[p.hand.length - 1];
   const { fan, reasons } = scoreHand(p, last.kind, true, g.round);
   settle(g, seat, fan, null);
-  g.phase = { kind: "over", winner: seat, fan, reason: `${p.name} wins by self-draw. ${reasons.join(", ")}.`, winningHand: sortTiles(p.hand) };
-  g.log.push(`${p.name} wins, ${fan} fan.`);
+  g.phase = { kind: "over", winner: seat, fan, reason: { key: "mj.over.selfWin", seat, reasons }, winningHand: sortTiles(p.hand) };
+  g.log.push({ key: "mj.log.wins", seat, fan });
 }
 
 /** Concealed kong from hand on your own turn (four of a kind). */
@@ -301,7 +307,7 @@ export function declareKong(g: Game, kind: Kind) {
   if (tiles.length !== 4) return;
   removeTiles(p, tiles);
   p.melds.push({ kind: "kong", tiles, from: -1 });
-  g.log.push(`${p.name} declares a concealed kong of ${KIND_LABELS[kind]}.`);
+  g.log.push({ key: "mj.log.kong", seat, tile: kind });
   g.phase = { kind: "draw", seat };            // replacement tile
 }
 
@@ -314,7 +320,7 @@ export function discard(g: Game, tileId: number) {
   p.hand = sortTiles(p.hand);
   p.discards.push(t);
   g.lastDiscard = { seat, tile: t };
-  g.log.push(`${p.name} discards ${KIND_LABELS[t.kind]}.`);
+  g.log.push({ key: "mj.log.discards", seat, tile: t.kind });
   // Everyone else gets a say, in priority order: win beats pung/kong beats chow,
   // but we simply ask each seat in turn order and resolve by priority after.
   const pending = [1, 2, 3].map((d) => (seat + d) % 4).filter((s) => claimOptions(g, s).length > 1);
@@ -345,8 +351,8 @@ export function resolveClaims(g: Game, answers: Map<number, Claim>) {
     p.hand.push(tile);
     const { fan, reasons } = scoreHand(p, tile.kind, false, g.round);
     settle(g, best.seat, fan, discarder);
-    g.phase = { kind: "over", winner: best.seat, fan, reason: `${p.name} wins on ${g.players[discarder].name}'s ${KIND_LABELS[tile.kind]}. ${reasons.join(", ")}.`, winningHand: sortTiles(p.hand) };
-    g.log.push(`${p.name} wins, ${fan} fan.`);
+    g.phase = { kind: "over", winner: best.seat, fan, reason: { key: "mj.over.winOn", seat: best.seat, from: discarder, tile: tile.kind, reasons }, winningHand: sortTiles(p.hand), fedBy: { seat: discarder, kind: tile.kind } };
+    g.log.push({ key: "mj.log.wins", seat: best.seat, fan });
     return;
   }
   if (best.claim.kind === "pung" || best.claim.kind === "kong") {
@@ -354,7 +360,7 @@ export function resolveClaims(g: Game, answers: Map<number, Claim>) {
     const mine = p.hand.filter((t) => t.kind === tile.kind).slice(0, n);
     removeTiles(p, mine);
     p.melds.push({ kind: best.claim.kind, tiles: [...mine, tile], from: discarder });
-    g.log.push(`${p.name} calls ${best.claim.kind} on ${KIND_LABELS[tile.kind]}.`);
+    g.log.push({ key: "mj.log.call", seat: best.seat, call: best.claim.kind, tile: tile.kind });
     g.turn = best.seat;
     g.phase = best.claim.kind === "kong" ? { kind: "draw", seat: best.seat } : { kind: "discard", seat: best.seat };
     return;
@@ -362,7 +368,7 @@ export function resolveClaims(g: Game, answers: Map<number, Claim>) {
   if (best.claim.kind === "chow") {
     removeTiles(p, best.claim.tiles);
     p.melds.push({ kind: "chow", tiles: sortTiles([...best.claim.tiles, tile]), from: discarder });
-    g.log.push(`${p.name} calls chow on ${KIND_LABELS[tile.kind]}.`);
+    g.log.push({ key: "mj.log.call", seat: best.seat, call: "chow", tile: tile.kind });
     g.turn = best.seat;
     g.phase = { kind: "discard", seat: best.seat };
   }

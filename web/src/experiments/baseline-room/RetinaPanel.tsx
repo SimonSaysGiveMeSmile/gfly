@@ -8,12 +8,13 @@
 import { useEffect, useRef } from "react";
 import { RETINA_CH } from "./protocol";
 import type { FrameBus } from "./bus";
+import { useT, type Key } from "@/lib/i18n";
 
-const CHANNELS = [
-  { label: "What it sees", ch: 0 },
-  { label: "Lamina input", ch: 1 },
-  { label: "L1 firing", ch: 2 },
-  { label: "L2 firing", ch: 3 },
+const CHANNELS: { label: Key; ch: number }[] = [
+  { label: "retina.sees", ch: 0 },
+  { label: "retina.lamina", ch: 1 },
+  { label: "retina.l1", ch: 2 },
+  { label: "retina.l2", ch: 3 },
 ];
 
 function color(ch: number, v: number): string {
@@ -26,6 +27,7 @@ function color(ch: number, v: number): string {
 
 export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const { t } = useT();
 
   useEffect(() => {
     const canvas = ref.current;
@@ -59,7 +61,7 @@ export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: str
       ctx.clearRect(0, 0, cw, ch);
       ctx.font = "500 11px -apple-system, system-ui, sans-serif";
       ctx.fillStyle = "rgba(235,235,245,0.55)";
-      for (let c = 0; c < cols; c++) ctx.fillText(CHANNELS[c].label, c * cell + 8, 14);
+      for (let c = 0; c < cols; c++) ctx.fillText(t(CHANNELS[c].label), c * cell + 8, 14);
       ctx.fillStyle = "rgba(235,235,245,0.35)";
       ctx.fillText("L", 2, 28 + cell * 0.31);
       ctx.fillText("R", 2, 28 + cell * 0.62 + cell * 0.31);
@@ -89,7 +91,7 @@ export function RetinaPanel({ bus, className }: { bus: FrameBus; className?: str
     ro.observe(canvas);
     raf = requestAnimationFrame(draw);
     return () => { cancelAnimationFrame(raf); off(); ro.disconnect(); };
-  }, [bus]);
+  }, [bus, t]);
 
   return <canvas ref={ref} className={className} style={{ width: "100%", display: "block" }} />;
 }

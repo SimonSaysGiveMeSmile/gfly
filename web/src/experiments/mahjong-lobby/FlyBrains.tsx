@@ -13,7 +13,7 @@ import { BrainView } from "../baseline-room/BrainView";
 import { FrameBus } from "../baseline-room/bus";
 import type { FromWorker, ToWorker } from "../baseline-room/protocol";
 import { TIERS, useTier } from "@/lib/sim/tier";
-import { KIND_LABELS } from "./engine";
+import { useT, type Key } from "@/lib/i18n";
 
 const SEATS: { seat: number; className: string }[] = [
   { seat: 1, className: "right-3 top-[34%]" },
@@ -32,10 +32,13 @@ export interface BrainsApi {
   teach(seat: number, code: number, reward: 1 | -1, ms?: number): Promise<number>;
 }
 
-type SeatState = { ready: boolean; hz: number; note: string; lessons: number; synapses: number };
+type Note = { key: Key; code: number } | null;
+type SeatState = { ready: boolean; hz: number; note: Note; lessons: number; synapses: number };
 
-export function FlyBrains({ names, active, enabled, onApi }: {
+export function FlyBrains({ names, labelOf, active, enabled, onApi }: {
   names: string[];
+  /** What a code is called, for the captions. */
+  labelOf: (code: number) => string;
   active: number | null;
   enabled: boolean;
   /** Called with the wire to the brains once they exist, and with null when they go. */
@@ -47,12 +50,13 @@ export function FlyBrains({ names, active, enabled, onApi }: {
   const workers = useRef(new Map<number, Worker>());
   const pending = useRef(new Map<number, (m: FromWorker) => void>());
   const nextId = useRef(1);
+  const { t } = useT();
 
   useEffect(() => {
     if (!enabled) { onApi(null); return; }
     const patch = (seat: number, p: Partial<SeatState>) =>
       setState((s) => {
-        const base: SeatState = s[seat] ?? { ready: false, hz: 0, note: "", lessons: 0, synapses: 0 };
+        const base: SeatState = s[seat] ?? { ready: false, hz: 0, note: null, lessons: 0, synapses: 0 };
         return { ...s, [seat]: { ...base, ...p } };
       });
     const ws = SEATS.map(({ seat }, i) => {
@@ -84,15 +88,15 @@ export function FlyBrains({ names, active, enabled, onApi }: {
     const api: BrainsApi = {
       ready: (seat) => !!buses[SEATS.findIndex((s) => s.seat === seat)]?.ready,
       async look(seat, code, ms = 120) {
-        patch(seat, { note: `looking at ${KIND_LABELS[code]}` });
+        patch(seat, { note: { key: "mj.brain.lookingAt", code } });
         const m = await ask(seat, { type: "look", id: nextId.current++, code, ms });
         if (m.type !== "looked") return { code, approach: 0, avoid: 0, kc: 0 };
         const v = m.approach - m.avoid;
-        patch(seat, { note: `${v > 0.05 ? "likes" : v < -0.05 ? "dislikes" : "unsure about"} ${KIND_LABELS[code]}` });
+        patch(seat, { note: { key: v > 0.05 ? "mj.brain.likes" : v < -0.05 ? "mj.brain.dislikes" : "mj.brain.unsure", code } });
         return { code, approach: m.approach, avoid: m.avoid, kc: m.kc };
       },
       async teach(seat, code, reward, ms = 150) {
-        patch(seat, { note: `${reward > 0 ? "rewarded" : "punished"} for ${KIND_LABELS[code]}` });
+        patch(seat, { note: { key: reward > 0 ? "mj.brain.rewarded" : "mj.brain.punished", code } });
         const m = await ask(seat, { type: "teach", id: nextId.current++, code, reward, ms });
         const n = m.type === "taught" ? m.synapses : 0;
         setState((s) => ({ ...s, [seat]: { ...s[seat], lessons: (s[seat]?.lessons ?? 0) + 1, synapses: (s[seat]?.synapses ?? 0) + n } }));
@@ -113,16 +117,16 @@ export function FlyBrains({ names, active, enabled, onApi }: {
           <div key={seat} className={`pointer-events-none absolute ${className} w-[9.5rem]`}>
             <div className="flex items-baseline justify-between px-1">
               <span className={`t-cap ${active === seat ? "text-label" : ""}`}>{names[seat]}</span>
-              <span className="t-cap num">{st?.ready ? `${st.hz.toFixed(0)} Hz` : "loading"}</span>
+              <span className="t-cap num">{st?.ready ? `${st.hz.toFixed(0)} Hz` : t("mj.brain.loading")}</span>
             </div>
             <BrainView bus={buses[i]} className="glass-inner mt-0.5 aspect-square w-full" />
-            <p className="t-cap mt-0.5 truncate px-1">{st?.note || (st?.ready ? "watching" : "")}</p>
-            {st && st.lessons > 0 && <p className="t-cap truncate px-1 text-label-2">{st.lessons} lessons, {st.synapses.toLocaleString()} synapses changed</p>}
+            <p className="t-cap mt-0.5 truncate px-1">{st?.note ? t(st.note.key, { tile: labelOf(st.note.code) }) : st?.ready ? t("mj.brain.watching") : ""}</p>
+            {st && st.lessons > 0 && <p className="t-cap truncate px-1 text-label-2">{t("mj.brain.lessons", { n: st.lessons, s: st.synapses.toLocaleString() })}</p>}
           </div>
         );
       })}
       <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 t-cap whitespace-nowrap">
-        Three live copies of the {TIERS.find((t) => t.tier === tier)!.label.toLowerCase()} brain. Each one throws what its mushroom body likes least, and learns from wins and losses.
+        {t("mj.brain.note", { tier: t(`tier.${TIERS.find((x) => x.tier === tier)!.id}` as Key).toLowerCase() })}
       </p>
     </>
   );

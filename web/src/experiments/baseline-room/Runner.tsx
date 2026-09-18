@@ -10,50 +10,51 @@ import { LIMBS, loadFlyRigData } from "@/lib/three/flyRig";
 import { FUNCTION_GROUPS } from "@/lib/sim/populations";
 import { TIERS, useTier } from "@/lib/sim/tier";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
+import { useT, type Key, type T } from "@/lib/i18n";
 
 type Progress = { label: string; received: number; total: number };
 
-const TESTS: { id: AssayName; name: string }[] = [
-  { id: "optomotor", name: "Follow moving stripes" },
-  { id: "looming", name: "Dodge an object" },
-  { id: "wall", name: "Walk along walls" },
-  { id: "compass", name: "Keep a heading" },
+const TESTS: { id: AssayName; key: Key }[] = [
+  { id: "optomotor", key: "room.test.optomotor" },
+  { id: "looming", key: "room.test.looming" },
+  { id: "wall", key: "room.test.wall" },
+  { id: "compass", key: "room.test.compass" },
 ];
 
-const LESIONS: { id: "t4t5" | "lplc2" | "giantFiber"; label: string }[] = [
-  { id: "t4t5", label: "Silence motion cells" },
-  { id: "lplc2", label: "Silence loom cells" },
-  { id: "giantFiber", label: "Silence Giant Fiber" },
+const LESIONS: { id: "t4t5" | "lplc2" | "giantFiber"; key: Key }[] = [
+  { id: "t4t5", key: "room.lesion.t4t5" },
+  { id: "lplc2", key: "room.lesion.lplc2" },
+  { id: "giantFiber", key: "room.lesion.gf" },
 ];
 
-const VIEWS: { id: ViewMode; label: string }[] = [
-  { id: "follow", label: "Follow" },
-  { id: "orbit", label: "Room" },
-  { id: "eye", label: "Fly's eye" },
+const VIEWS: { id: ViewMode; key: Key }[] = [
+  { id: "follow", key: "room.view.follow" },
+  { id: "orbit", key: "room.view.orbit" },
+  { id: "eye", key: "room.view.eye" },
 ];
 
-const BODY_MODES: { id: BodyMode; label: string }[] = [
-  { id: "live", label: "Live" },
-  { id: "rest", label: "Still" },
-  { id: "walk", label: "Walk" },
-  { id: "fly", label: "Fly" },
+const BODY_MODES: { id: BodyMode; key: Key }[] = [
+  { id: "live", key: "room.body.live" },
+  { id: "rest", key: "room.body.rest" },
+  { id: "walk", key: "room.body.walk" },
+  { id: "fly", key: "room.body.fly" },
 ];
 
 /** Plain names for the joints a person is likely to reach for. */
-const JOINT_LABEL: [RegExp, string][] = [
-  [/^wing_yaw/, "Sweep"], [/^wing_roll/, "Raise"], [/^wing_pitch/, "Twist"],
-  [/^coxa_abduct/, "Hip out"], [/^coxa_twist/, "Hip twist"], [/^coxa_/, "Hip"],
-  [/^femur_twist/, "Thigh twist"], [/^femur_/, "Knee"], [/^tibia_/, "Shin"],
-  [/^tarsus_/, "Foot"], [/^tarsus2/, "Toe 2"], [/^tarsus3/, "Toe 3"], [/^tarsus4/, "Toe 4"], [/^tarsus5/, "Claw"],
-  [/^head_abduct/, "Turn"], [/^head_twist/, "Tilt"], [/^head$/, "Nod"],
-  [/^antenna_abduct/, "Out"], [/^antenna_twist/, "Twist"], [/^antenna_/, "Down"],
-  [/^rostrum/, "Rostrum"], [/^haustellum_abduct/, "Haustellum side"], [/^haustellum/, "Haustellum"], [/^labrum/, "Labrum"],
-  [/^abdomen_abduct_?(\d?)/, "Side"], [/^abdomen_?(\d?)/, "Curl"], [/^haltere/, "Haltere"],
+const JOINT_LABEL: [RegExp, Key][] = [
+  [/^wing_yaw/, "joint.sweep"], [/^wing_roll/, "joint.raise"], [/^wing_pitch/, "joint.twist"],
+  [/^coxa_abduct/, "joint.hipOut"], [/^coxa_twist/, "joint.hipTwist"], [/^coxa_/, "joint.hip"],
+  [/^femur_twist/, "joint.thighTwist"], [/^femur_/, "joint.knee"], [/^tibia_/, "joint.shin"],
+  [/^tarsus_/, "joint.foot"], [/^tarsus[234]/, "joint.toe"], [/^tarsus5/, "joint.claw"],
+  [/^head_abduct/, "joint.turn"], [/^head_twist/, "joint.tilt"], [/^head$/, "joint.nod"],
+  [/^antenna_abduct/, "joint.out"], [/^antenna_twist/, "joint.twist"], [/^antenna_/, "joint.down"],
+  [/^rostrum/, "joint.rostrum"], [/^haustellum_abduct/, "joint.haustellumSide"], [/^haustellum/, "joint.haustellum"], [/^labrum/, "joint.labrum"],
+  [/^abdomen_abduct_?(\d?)/, "joint.side"], [/^abdomen_?(\d?)/, "joint.curl"], [/^haltere/, "joint.haltere"],
 ];
-function jointLabel(name: string) {
-  for (const [re, l] of JOINT_LABEL) if (re.test(name)) {
-    const seg = name.match(/abdomen(?:_abduct)?_(\d)/)?.[1];
-    return seg ? `${l} ${seg}` : l;
+function jointLabel(t: T, name: string) {
+  for (const [re, k] of JOINT_LABEL) if (re.test(name)) {
+    const n = name.match(/abdomen(?:_abduct)?_(\d)/)?.[1] ?? name.match(/^tarsus(\d)/)?.[1] ?? "";
+    return t(k, { n });
   }
   return name;
 }
@@ -61,6 +62,7 @@ function jointLabel(name: string) {
 interface JointMeta { name: string; range: [number, number] }
 
 export function Runner() {
+  const { t } = useT();
   const bus = useMemo(() => new FrameBus(), []);
   const workerRef = useRef<Worker | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -174,7 +176,7 @@ export function Runner() {
   };
 
   if (!started) return <StartCard onStart={boot} tier={tier} />;
-  if (error) return <div className="glass p-8"><p className="t-head text-red">Something went wrong</p><p className="t-foot mt-2">{error}</p></div>;
+  if (error) return <div className="glass p-8"><p className="t-head text-red">{t("room.error")}</p><p className="t-foot mt-2">{error}</p></div>;
   if (!ready) return <Loading progress={progress} />;
 
   const r = slow?.rates;
@@ -188,25 +190,25 @@ export function Runner() {
       {/* Views ------------------------------------------------------- */}
       <div className="grid gap-2 lg:grid-cols-3">
         <Card
-          title="The room"
-          hint={fly?.airborne ? `Flying, ${Math.round(fly.z)} mm up` : "Walking"}
-          right={<Seg value={view} onChange={setView} options={VIEWS} />}
+          title={t("room.card.room")}
+          hint={fly?.airborne ? t("room.flying", { n: Math.round(fly.z) }) : t("room.walking")}
+          right={<Seg value={view} onChange={setView} options={VIEWS} t={t} />}
         >
           <RoomView bus={bus} view={view} overrides={overrides} className="glass-inner aspect-square w-full" />
         </Card>
         <Card
-          title="The body"
-          hint="Drag to turn"
-          right={<Seg value={bodyMode} onChange={setBodyMode} options={BODY_MODES} />}
+          title={t("room.card.body")}
+          hint={t("room.dragToTurn")}
+          right={<Seg value={bodyMode} onChange={setBodyMode} options={BODY_MODES} t={t} />}
         >
           <BodyView bus={bus} mode={bodyMode} overrides={overrides} className="glass-inner aspect-square w-full" />
         </Card>
-        <Card className="flex flex-col" title="The brain" hint="Each dot is a neuron, coloured by job">
+        <Card className="flex flex-col" title={t("room.card.brain")} hint={t("room.brain.hint")}>
           <BrainView bus={bus} className="glass-inner aspect-square w-full" />
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 px-1">
             {FUNCTION_GROUPS.map((g) => (
               <span key={g.id} className="flex items-center gap-1.5 t-cap">
-                <i className="inline-block h-2 w-2 rounded-full" style={{ background: g.color }} />{g.label}
+                <i className="inline-block h-2 w-2 rounded-full" style={{ background: g.color }} />{t(`group.${g.id}` as Key)}
               </span>
             ))}
           </div>
@@ -215,45 +217,45 @@ export function Runner() {
 
       {/* Controls Row ------------------------------------------------- */}
       <div className="grid gap-2 lg:grid-cols-12">
-        <Card className="lg:col-span-3" title="Fly it">
+        <Card className="lg:col-span-3" title={t("room.card.flyIt")}>
           <div className="flex flex-wrap gap-1.5">
-            <button onClick={toggleRun} className="btn-primary text-xs">{running ? "Pause" : "Run"}</button>
-            <button onClick={() => send({ type: "reset" })} className="btn text-xs">Reset</button>
-            <button onClick={() => send({ type: "threat" })} className="btn text-xs">Threat</button>
+            <button onClick={toggleRun} className="btn-primary text-xs">{running ? t("room.pause") : t("room.run")}</button>
+            <button onClick={() => send({ type: "reset" })} className="btn text-xs">{t("room.reset")}</button>
+            <button onClick={() => send({ type: "threat" })} className="btn text-xs">{t("room.threat")}</button>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <button onClick={() => send({ type: "takeoff" })} className="btn text-xs" disabled={pilot}>Take off</button>
-            <button onClick={() => send({ type: "land" })} className="btn text-xs" disabled={pilot}>Land</button>
+            <button onClick={() => send({ type: "takeoff" })} className="btn text-xs" disabled={pilot}>{t("room.takeoff")}</button>
+            <button onClick={() => send({ type: "land" })} className="btn text-xs" disabled={pilot}>{t("room.land")}</button>
             <button onClick={() => { setPilot(!pilot); if (!pilot) setView("follow"); }} className={pilot ? "btn-on text-xs" : "btn text-xs"}>
-              {pilot ? "Hands on" : "Take the controls"}
+              {pilot ? t("room.pilot.on") : t("room.pilot.off")}
             </button>
           </div>
           {pilot ? (
             <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
-              <Key k="W / S" v="Forward, back" /><Key k="A / D" v="Turn" />
-              <Key k="Space" v="Climb, take off" /><Key k="X" v="Sink, land" />
+              <Key k="W / S" v={t("room.key.ws")} /><Key k="A / D" v={t("room.key.ad")} />
+              <Key k="Space" v={t("room.key.space")} /><Key k="X" v={t("room.key.x")} />
             </div>
           ) : (
-            <p className="t-cap mt-2">The brain is driving. A Giant Fiber volley launches it.</p>
+            <p className="t-cap mt-2">{t("room.brainDriving")}</p>
           )}
-          <p className="t-cap mt-3 mb-1.5">Lesions</p>
+          <p className="t-cap mt-3 mb-1.5">{t("room.lesions")}</p>
           <div className="flex flex-wrap gap-1.5">
             {LESIONS.map((l) => (
               <button key={l.id} onClick={() => toggleLesion(l.id)} className={lesion === l.id ? "btn-danger text-xs" : "btn text-xs"}>
-                {l.label}
+                {t(l.key)}
               </button>
             ))}
             <button onClick={toggleEnhance} className={enhanced ? "btn-on text-xs" : "btn text-xs"}>
-              {enhanced ? "Enhanced motor: on" : "Enhanced motor"}
+              {enhanced ? t("room.enhanced.on") : t("room.enhanced.off")}
             </button>
           </div>
         </Card>
 
-        <Card className="lg:col-span-4" title="Move a limb" hint="Drag a slider; double-click it to let go" right={
-          overrides.size > 0 ? <button onClick={() => setOverrides(new Map())} className="btn text-xs">Release all</button> : undefined
+        <Card className="lg:col-span-4" title={t("room.card.limb")} hint={t("room.limb.hint")} right={
+          overrides.size > 0 ? <button onClick={() => setOverrides(new Map())} className="btn text-xs">{t("room.limb.release")}</button> : undefined
         }>
           <select value={limb} onChange={(e) => setLimb(e.target.value)} className="sel w-full">
-            {LIMBS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            {LIMBS.map((l) => <option key={l.id} value={l.id}>{t(`limb.${l.id}` as Key)}</option>)}
           </select>
           <div className="mt-2 space-y-1">
             {limbJoints.map((j) => {
@@ -261,7 +263,7 @@ export function Runner() {
               const held = v !== undefined;
               return (
                 <label key={j.name} className="grid grid-cols-[5.5rem_1fr_3rem] items-center gap-2">
-                  <span className={`t-foot truncate ${held ? "text-label" : ""}`}>{jointLabel(j.name)}</span>
+                  <span className={`t-foot truncate ${held ? "text-label" : ""}`}>{jointLabel(t, j.name)}</span>
                   <input
                     type="range" min={j.range[0]} max={j.range[1]} step={0.01}
                     value={v ?? 0}
@@ -269,54 +271,54 @@ export function Runner() {
                     onDoubleClick={() => setJoint(j.name, null)}
                     className={held ? "rng rng-on" : "rng"}
                   />
-                  <span className="t-cap num text-right">{held ? `${Math.round((v * 180) / Math.PI)}°` : "auto"}</span>
+                  <span className="t-cap num text-right">{held ? `${Math.round((v * 180) / Math.PI)}°` : t("room.limb.auto")}</span>
                 </label>
               );
             })}
-            {limbJoints.length === 0 && <p className="t-foot">Loading the rig…</p>}
+            {limbJoints.length === 0 && <p className="t-foot">{t("room.limb.loading")}</p>}
           </div>
         </Card>
 
-        <Card className="lg:col-span-5" title="The eyes" hint="What it sees">
+        <Card className="lg:col-span-5" title={t("room.card.eyes")} hint={t("room.eyes.hint")}>
           <div className="glass-inner p-2"><RetinaPanel bus={bus} /></div>
         </Card>
       </div>
 
       {/* Tests Row ---------------------------------------------------- */}
       <div className="grid gap-2 lg:grid-cols-12">
-        <Card className="lg:col-span-5" title="Tests" hint="Pick one">
+        <Card className="lg:col-span-5" title={t("room.card.tests")} hint={t("room.tests.hint")}>
           <div className="grid grid-cols-2 gap-2">
-            {TESTS.map((t) => (
-              <button key={t.id} onClick={() => pickTest(assay === t.id ? null : t.id)} className={assay === t.id ? "btn-on text-sm" : "btn text-sm"} style={{ textAlign: "left" }}>
-                {t.name}
+            {TESTS.map((x) => (
+              <button key={x.id} onClick={() => pickTest(assay === x.id ? null : x.id)} className={assay === x.id ? "btn-on text-sm" : "btn text-sm"} style={{ textAlign: "left" }}>
+                {t(x.key)}
               </button>
             ))}
           </div>
           {verdict && (
             <div className="mt-3 pt-2">
-              <Verdict v={verdict.verdict} />
+              <Verdict v={verdict.verdict} t={t} />
               <p className="t-foot mt-2">{verdict.detail}</p>
             </div>
           )}
         </Card>
 
-        <Card className="lg:col-span-4" title="Activity">
+        <Card className="lg:col-span-4" title={t("room.card.activity")}>
           <div className="space-y-2">
-            <Bar label="Steering L" hz={r?.descendingL} max={30} />
-            <Bar label="Steering R" hz={r?.descendingR} max={30} />
-            <Bar label="Motion" hz={r ? (r.t4 + r.t5) / 2 : 0} max={20} />
-            <Bar label="Loom" hz={r ? (r.lplc2L + r.lplc2R) / 2 : 0} max={40} />
-            <Bar label="Giant Fiber" hz={r?.giantFiber} max={40} accent />
+            <Bar label={t("room.bar.steerL")} hz={r?.descendingL} max={30} />
+            <Bar label={t("room.bar.steerR")} hz={r?.descendingR} max={30} />
+            <Bar label={t("room.bar.motion")} hz={r ? (r.t4 + r.t5) / 2 : 0} max={20} />
+            <Bar label={t("room.bar.loom")} hz={r ? (r.lplc2L + r.lplc2R) / 2 : 0} max={40} />
+            <Bar label={t("room.bar.gf")} hz={r?.giantFiber} max={40} accent />
           </div>
         </Card>
 
-        <Card className="lg:col-span-3" title="Stats">
+        <Card className="lg:col-span-3" title={t("room.card.stats")}>
           <dl className="space-y-1.5">
-            <Stat k="Neurons" v={ready.neurons.toLocaleString()} />
-            <Stat k="Speed" v={slow && slow.realtime >= 0 ? `${slow.realtime.toFixed(2)}×` : "…"} hot={!!slow && slow.realtime > 0.8} />
-            <Stat k="Rate" v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
-            <Stat k="Body" v={fly ? `${Math.round(fly.speed)} mm/s` : "—"} />
-            <Stat k="Height" v={fly ? `${Math.round(fly.z)} mm` : "—"} hot={!!fly?.airborne} />
+            <Stat k={t("room.stat.neurons")} v={ready.neurons.toLocaleString()} />
+            <Stat k={t("room.stat.speed")} v={slow && slow.realtime >= 0 ? `${slow.realtime.toFixed(2)}×` : "…"} hot={!!slow && slow.realtime > 0.8} />
+            <Stat k={t("room.stat.rate")} v={slow ? `${slow.meanHz.toFixed(1)} Hz` : "—"} />
+            <Stat k={t("room.stat.body")} v={fly ? `${Math.round(fly.speed)} mm/s` : "—"} />
+            <Stat k={t("room.stat.height")} v={fly ? `${Math.round(fly.z)} mm` : "—"} hot={!!fly?.airborne} />
           </dl>
         </Card>
       </div>
@@ -341,11 +343,11 @@ function Card({ title, hint, right, className, children }: { title: string; hint
   );
 }
 
-function Seg<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { id: T; label: string }[] }) {
+function Seg<V extends string>({ value, onChange, options, t }: { value: V; onChange: (v: V) => void; options: { id: V; key: Key }[]; t: T }) {
   return (
     <div className="seg seg-sm">
       {options.map((o) => (
-        <button key={o.id} aria-pressed={value === o.id} onClick={() => onChange(o.id)}>{o.label}</button>
+        <button key={o.id} aria-pressed={value === o.id} onClick={() => onChange(o.id)}>{t(o.key)}</button>
       ))}
     </div>
   );
@@ -361,22 +363,23 @@ function Key({ k, v }: { k: string; v: string }) {
 }
 
 function StartCard({ onStart, tier }: { onStart: () => void; tier: number }) {
-  const t = TIERS.find((x) => x.tier === tier)!;
+  const { t } = useT();
+  const x = TIERS.find((y) => y.tier === tier)!;
   return (
     <div className="glass p-10 text-center">
-      <h3 className="t-title">Load the brain</h3>
+      <h3 className="t-title">{t("room.start.title")}</h3>
       <p className="t-body mx-auto mt-3 max-w-md">
-        {t.label} brain: {t.edges}, {t.size} once, plus the brain shape and the fly. After that everything runs on your device.
-        Change the size from the menu at the top.
+        {t("room.start.body", { tier: t(`tier.${x.id}` as Key), edges: t("tier.connections", { n: x.edges }), size: x.size })}
       </p>
-      <button onClick={onStart} className="btn-primary mt-6">Load</button>
+      <button onClick={onStart} className="btn-primary mt-6">{t("room.start.load")}</button>
     </div>
   );
 }
 
 function Loading({ progress }: { progress: Progress | null }) {
+  const { t } = useT();
   const pct = progress && progress.total ? Math.round((progress.received / progress.total) * 100) : 0;
-  const label = progress?.label === "connectome" ? "Loading connections" : progress?.label === "neurons" ? "Loading neurons" : "Starting";
+  const label = progress?.label === "connectome" ? t("room.loading.connectome") : progress?.label === "neurons" ? t("room.loading.neurons") : t("room.loading.starting");
   return (
     <div className="glass p-10">
       <p className="t-head">{label}…</p>
@@ -384,7 +387,7 @@ function Loading({ progress }: { progress: Progress | null }) {
         <div className="h-full rounded-full bg-blue transition-[width] duration-200" style={{ width: `${pct}%` }} />
       </div>
       <p className="t-foot num mt-2">
-        {progress && progress.total ? `${(progress.received / 1e6).toFixed(1)} of ${(progress.total / 1e6).toFixed(1)} MB` : ""}
+        {progress && progress.total ? t("room.loading.of", { a: (progress.received / 1e6).toFixed(1), b: (progress.total / 1e6).toFixed(1) }) : ""}
       </p>
     </div>
   );
@@ -414,8 +417,8 @@ function Bar({ label, hz, max, accent }: { label: string; hz?: number; max: numb
   );
 }
 
-function Verdict({ v }: { v: "running" | "pass" | "fail" }) {
-  if (v === "pass") return <span className="pill pill-green">Behaves like a fly</span>;
-  if (v === "fail") return <span className="pill pill-red">Does not</span>;
-  return <span className="pill pill-gray"><span className="live-dot" />Measuring</span>;
+function Verdict({ v, t }: { v: "running" | "pass" | "fail"; t: T }) {
+  if (v === "pass") return <span className="pill pill-green">{t("room.verdict.pass")}</span>;
+  if (v === "fail") return <span className="pill pill-red">{t("room.verdict.fail")}</span>;
+  return <span className="pill pill-gray"><span className="live-dot" />{t("room.verdict.running")}</span>;
 }
