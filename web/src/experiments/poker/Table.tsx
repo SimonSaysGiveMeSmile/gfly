@@ -31,7 +31,7 @@ const cardKey = (c: Card) => `${c.rank}${SUIT[c.suit]}`;
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
   seat: { pos: [0, 0.42, 0.98], look: [0, -0.02, -0.12], fov: 62 },
-  top: { pos: [0, 0.95, 0.3], look: [0, 0, -0.02], fov: 52 },
+  top: { pos: [0, 0.86, 0.24], look: [0, 0, -0.02], fov: 42 },
 };
 
 /** Which fly said what this hand, for the lesson at showdown. */

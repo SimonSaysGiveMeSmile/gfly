@@ -22,7 +22,7 @@ export function ProductCard({ product, index }: { product: Product; index: numbe
   const badge = (
     <div className="flex items-center justify-between">
       <span className="flex items-center gap-2">
-        {product.icon && <img src={product.icon} alt="" className="h-9 w-9 rounded-[9px] shadow-[0_2px_10px_rgba(0,0,0,0.45)]" />}
+        {product.icon && <img src={product.icon} alt="" className="h-[45px] w-[45px] rounded-[11px] shadow-[0_2px_10px_rgba(0,0,0,0.45)]" />}
         <span className="t-cap num">{product.number}</span>
       </span>
       <span className={`pill ${s.cls}`}>{product.status === "live" && <span className="live-dot" />}{t(s.key)}</span>

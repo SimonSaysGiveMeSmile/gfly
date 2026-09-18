@@ -9,6 +9,11 @@ import { ChessTable } from "@/experiments/chess/Table";
 import { XiangqiTable } from "@/experiments/xiangqi/Table";
 import { SudokuTable } from "@/experiments/sudoku/Table";
 import { PokerTable } from "@/experiments/poker/Table";
+import { GoTable } from "@/experiments/go/Table";
+import { PoolTable } from "@/experiments/pool/Table";
+import { BowlingTable } from "@/experiments/bowling/Table";
+import { GolfTable } from "@/experiments/golf/Table";
+import { TennisTable } from "@/experiments/tennis/Table";
 import { productText, useT, type T } from "@/lib/i18n";
 
 export function LabBody({ product }: { product: Product }) {
@@ -19,7 +24,7 @@ export function LabBody({ product }: { product: Product }) {
       <header className="mb-2 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">{t("lab.back")}</Link>
         <div className="mt-1 flex items-center gap-3">
-          {product.icon && <img src={product.icon} alt="" className="h-11 w-11 rounded-[11px]" />}
+          {product.icon && <img src={product.icon} alt="" className="h-[55px] w-[55px] rounded-[14px]" />}
           <h1 className="t-title">{text.title}</h1>
         </div>
         <p className="t-foot mt-1 max-w-2xl">{text.summary}</p>
@@ -41,6 +46,16 @@ export function LabBody({ product }: { product: Product }) {
           <SudokuTable />
         ) : product.slug === "poker" ? (
           <PokerTable />
+        ) : product.slug === "go" ? (
+          <GoTable />
+        ) : product.slug === "pool" ? (
+          <PoolTable />
+        ) : product.slug === "bowling" ? (
+          <BowlingTable />
+        ) : product.slug === "golf" ? (
+          <GolfTable />
+        ) : product.slug === "tennis" ? (
+          <TennisTable />
         ) : (
           <Planned t={t} />
         )}

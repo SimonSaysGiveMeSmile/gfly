@@ -32,7 +32,7 @@ const DISC_R = 0.031, DISC_H = 0.012;
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
   seat: { pos: [0, 0.42, 0.74], look: [0, 0.03, -0.04], fov: 56 },
-  top: { pos: [0, 0.95, 0.2], look: [0, 0, -0.03], fov: 50 },
+  top: { pos: [0, 0.84, 0.15], look: [0, 0, -0.03], fov: 40 },
 };
 
 class Store {

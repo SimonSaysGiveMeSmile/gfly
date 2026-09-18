@@ -32,7 +32,7 @@ export type TableView = "seat" | "desk";
 /** Camera presets in the south seat's frame, heights relative to the table top. */
 export const PRESETS: Record<TableView, Preset> = {
   seat: { pos: [0, 0.33, 0.78], look: [0, -0.03, -0.02], fov: 60 },
-  desk: { pos: [0, 0.52, 0.62], look: [0, 0, 0.22], fov: 52 },
+  desk: { pos: [0, 0.48, 0.56], look: [0, 0, 0.22], fov: 44 },
 };
 
 export function MahjongView({ store, me, view, body, onPick, onHover, className }: {

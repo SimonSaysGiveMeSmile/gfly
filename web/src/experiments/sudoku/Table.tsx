@@ -32,7 +32,7 @@ type Difficulty = "easy" | "medium" | "hard";
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
   seat: { pos: [0, 0.44, 0.56], look: [0, 0.0, -0.02], fov: 52 },
-  top: { pos: [0, 0.72, 0.06], look: [0, 0, -0.02], fov: 46 },
+  top: { pos: [0, 0.62, 0.04], look: [0, 0, -0.02], fov: 38 },
 };
 
 class Store {

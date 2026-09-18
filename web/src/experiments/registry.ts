@@ -92,9 +92,74 @@ export const PRODUCTS: Product[] = [
     learning: "plastic",
   },
   {
+    slug: "go",
+    preview: "/previews/go.jpg",
+    number: "07",
+    title: "Go",
+    tagline: "Nine lines each way, black against a fly.",
+    summary:
+      "A 9×9 go board on the tea table, area scoring with komi. The fly opposite rates every point by captures, escapes, atari and shape; with its brain on, the connectome chooses among the best and learns from how they ranked.",
+    status: "live",
+    claim: "A fly brain can learn to prefer good points on a go board from how its choices rank.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "pool",
+    preview: "/previews/pool.jpg",
+    number: "08",
+    title: "Pool",
+    tagline: "Eight-ball in the saloon against a fly in a hat.",
+    summary:
+      "A small pool table on the bar table, sixteen balls, real cushions and pockets. Every shot is simulated to rest before it is drawn, so the fly can try each pocket for each ball; with its brain on, the connectome chooses among the shots that are open and learns from what drops.",
+    status: "live",
+    claim: "A fly brain can learn which shots pot from the balls that go down.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "bowling",
+    preview: "/previews/bowling.jpg",
+    number: "09",
+    title: "Bowling",
+    tagline: "Ten frames on a lane down the saloon table.",
+    summary:
+      "A tabletop lane with gutters and ten turned pins, real ten-pin scoring. The fly rolls the lines a bowler would try, the pockets, the head pin, what is left standing, in the same simulation you watch; with its brain on, the connectome chooses among them and learns from the pin count.",
+    status: "live",
+    claim: "A fly brain can learn which line into the pins knocks the most down.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "golf",
+    preview: "/previews/golf.jpg",
+    number: "10",
+    title: "Golf",
+    tagline: "Five putting holes on the tea table.",
+    summary:
+      "A putting green with a wooden rim and blocks to bank off, five holes, fewest strokes wins. The fly reads a straight putt, a lag and a bank off each rim in the same physics you see; with its brain on, the connectome chooses among them and learns from where the ball finished.",
+    status: "live",
+    claim: "A fly brain can learn which line reaches the cup from where its putts finish.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
+    slug: "tennis",
+    preview: "/previews/tennis.jpg",
+    number: "11",
+    title: "Tennis",
+    tagline: "A short set on a court the size of the table.",
+    summary:
+      "Tennis as a rally of decisions: each shot names a spot and a pace, harder balls land less exactly, and a runner who cannot reach the bounce loses the point. Real scoring, serves and second serves. The fly weighs the open court, behind you, a drop and the middle; with its brain on, the connectome chooses and learns from the point.",
+    status: "live",
+    claim: "A fly brain can learn where to hit from the points it wins and loses.",
+    circuits: ["Mushroom body", "Reward neurons"],
+    learning: "plastic",
+  },
+  {
     slug: "compass-bench",
     icon: "/icons/compass-bench.png",
-    number: "07",
+    number: "12",
     title: "The Compass",
     tagline: "Watch 46 neurons hold a heading in the dark.",
     summary:
@@ -107,7 +172,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "odour-plume",
     icon: "/icons/odour-plume.png",
-    number: "08",
+    number: "13",
     title: "The Smell",
     tagline: "Fifty-three kinds of smell receptor, one meal to find.",
     summary:
@@ -120,7 +185,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "lesion-studio",
     icon: "/icons/lesion-studio.png",
-    number: "09",
+    number: "14",
     title: "Lesions",
     tagline: "Switch off any cell type. See what breaks.",
     summary:
@@ -133,7 +198,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "silicon-retina",
     icon: "/icons/silicon-retina.png",
-    number: "10",
+    number: "15",
     title: "The Retina",
     tagline: "Point the fly's motion detector at your webcam.",
     summary:
@@ -146,7 +211,7 @@ export const PRODUCTS: Product[] = [
   {
     slug: "atlas",
     icon: "/icons/atlas.png",
-    number: "11",
+    number: "16",
     title: "The Atlas",
     tagline: "Every neuron, and the shortest path between any two.",
     summary:

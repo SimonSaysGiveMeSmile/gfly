@@ -34,7 +34,7 @@ type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
   // Steep enough that the back ranks are not hidden behind the pieces in front.
   seat: { pos: [0, 0.58, 0.58], look: [0, 0.02, -0.04], fov: 52 },
-  top: { pos: [0, 0.86, 0.12], look: [0, 0, -0.03], fov: 46 },
+  top: { pos: [0, 0.76, 0.09], look: [0, 0, -0.03], fov: 38 },
 };
 
 /** Game state handed to the scene without going through React renders. */
