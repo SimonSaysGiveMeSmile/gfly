@@ -7,6 +7,7 @@ import { RetinaPanel } from "./RetinaPanel";
 import { BodyView, type BodyMode } from "./BodyView";
 import { FrameBus, type Ready } from "./bus";
 import { LIMBS, loadFlyRigData } from "@/lib/three/flyRig";
+import { FUNCTION_GROUPS } from "@/lib/sim/populations";
 import type { AssayName, FromWorker, Telemetry, ToWorker } from "./protocol";
 
 type Progress = { label: string; received: number; total: number };
@@ -187,8 +188,15 @@ export function Runner() {
         >
           <BodyView bus={bus} mode={bodyMode} overrides={overrides} className="glass-inner aspect-square w-full" />
         </Card>
-        <Card className="flex flex-col" title="The brain" hint="Each dot is a neuron">
+        <Card className="flex flex-col" title="The brain" hint="Each dot is a neuron, coloured by job">
           <BrainView bus={bus} className="glass-inner aspect-square w-full" />
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 px-1">
+            {FUNCTION_GROUPS.map((g) => (
+              <span key={g.id} className="flex items-center gap-1.5 t-cap">
+                <i className="inline-block h-2 w-2 rounded-full" style={{ background: g.color }} />{g.label}
+              </span>
+            ))}
+          </div>
         </Card>
       </div>
 

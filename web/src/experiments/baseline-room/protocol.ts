@@ -80,6 +80,8 @@ export type FromWorker =
       somaXYZ: Float32Array;
       /** Neuron index for each soma, so activity can be looked up per point. */
       somaNeuron: Uint32Array;
+      /** Function group per soma, index into FUNCTION_GROUPS. */
+      somaGroup: Uint8Array;
     }
   | {
       type: "telemetry";

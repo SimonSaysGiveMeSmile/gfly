@@ -166,3 +166,29 @@ export function buildCircuitMap(nt: NeuronTable, m: Manifest): CircuitMap {
     epg: byType(nt, m, "EPG"),
   };
 }
+
+/**
+ * What a neuron is for, in six plain words. Built from the release's
+ * superclass labels so every soma can be coloured by job.
+ */
+export const FUNCTION_GROUPS = [
+  { id: "vision", label: "Vision", color: "#5ac8fa" },
+  { id: "central", label: "Central brain", color: "#bf5af2" },
+  { id: "sensory", label: "Senses", color: "#30d158" },
+  { id: "command", label: "Command lines", color: "#ff9f0a" },
+  { id: "motor", label: "Motor and body", color: "#ff453a" },
+  { id: "other", label: "Other", color: "#8e8e93" },
+] as const;
+
+const GROUP_OF: Record<string, number> = {
+  visual_projection: 0, visual_centrifugal: 0, ol_intrinsic: 0, ol_sensory: 0, visual_projection_tbc: 0,
+  cb_intrinsic: 1,
+  cb_sensory: 2, cb_sensory_tbc: 2, sensory_descending: 2, sensory_ascending: 2, sensory_ascending_tbc: 2, vnc_sensory: 2, vnc_sensory_tbc: 2,
+  descending_neuron: 3, efferent_descending: 3, ascending_neuron: 3, efferent_ascending: 3,
+  vnc_intrinsic: 4, vnc_motor: 4, vnc_efferent: 4, cb_motor: 4, cb_efferent: 4, vnc_tbc: 4,
+};
+
+/** Function group index per superclass index. */
+export function groupTable(m: Manifest): Uint8Array {
+  return Uint8Array.from(m.superclasses, (name) => GROUP_OF[name] ?? 5);
+}

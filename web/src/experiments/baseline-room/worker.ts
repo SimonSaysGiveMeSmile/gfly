@@ -7,7 +7,7 @@
 
 import { fetchBlock, readGraph, readNeurons, type NeuronTable } from "@/lib/sim/format";
 import { BrainSim, DEFAULT_PARAMS } from "@/lib/sim/kernel";
-import { buildCircuitMap, type CircuitMap, type Manifest } from "@/lib/sim/populations";
+import { buildCircuitMap, groupTable, type CircuitMap, type Manifest } from "@/lib/sim/populations";
 import {
   FURNITURE, ROOM_H, ROOM_W, castRay, distanceToWall, land, launchThreat,
   makeWorld, stepBody, takeoff, type World,
@@ -199,11 +199,14 @@ async function load(tier: number) {
   }
   const somaXYZ = new Float32Array(withSoma.length * 3);
   const somaNeuron = new Uint32Array(withSoma.length);
+  const somaGroup = new Uint8Array(withSoma.length);
+  const groups = groupTable(manifest);
   withSoma.forEach((i, k) => {
     somaXYZ[k * 3] = nt!.soma[i * 3];
     somaXYZ[k * 3 + 1] = nt!.soma[i * 3 + 1];
     somaXYZ[k * 3 + 2] = nt!.soma[i * 3 + 2];
     somaNeuron[k] = i;
+    somaGroup[k] = groups[nt!.superclass[i]] ?? 5;
   });
 
   const layout = (cols: { u: number; v: number }[]) => {
@@ -219,7 +222,7 @@ async function load(tier: number) {
     columnsR: circuits.retinaR.columns.length,
     retinaLayoutL: layout(circuits.retinaL.columns),
     retinaLayoutR: layout(circuits.retinaR.columns),
-    somaXYZ, somaNeuron,
+    somaXYZ, somaNeuron, somaGroup,
     populations: {
       "L1/L2 columns": circuits.retinaL.columns.length + circuits.retinaR.columns.length,
       "T4": circuits.t4.length, "T5": circuits.t5.length,

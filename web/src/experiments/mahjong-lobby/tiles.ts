@@ -54,13 +54,13 @@ async function build(renderer: THREE.WebGLRenderer): Promise<TileSet> {
     ...KIND_NAMES.map((n) => loadImage(`/mahjong/tiles/${n}.svg`)),
   ]);
   const backTex = await faceTexture(back, null, renderer);
-  const ivory = new THREE.MeshPhysicalMaterial({ color: 0xf1e9d8, roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.25 });
+  const ivory = new THREE.MeshPhysicalMaterial({ color: 0xf1e9d8, roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.45 });
   // The set's back is a hot orange; toned down so it does not blow out under the lamp.
   const green = new THREE.MeshPhysicalMaterial({ map: backTex, color: 0xb98a78, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.35 });
   const materials: THREE.Material[][] = [];
   for (let k = 0; k < KIND_NAMES.length; k++) {
     const tex = await faceTexture(front, glyphs[k], renderer);
-    const face = new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.28, clearcoat: 0.8, clearcoatRoughness: 0.2 });
+    const face = new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.45 });
     materials.push([ivory, ivory, ivory, ivory, face, green]);
   }
   const geometry = new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D);

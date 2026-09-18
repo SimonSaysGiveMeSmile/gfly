@@ -11,48 +11,38 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { loadShell } from "@/lib/three/meshes";
+import { FUNCTION_GROUPS } from "@/lib/sim/populations";
 import type { FrameBus } from "./bus";
 
 // Brain bbox in 8 nm voxels: x 2.2k-93.8k, y 4.6k-54.8k, z 7.9k-52k. The VNC
 // continues to z 134.6k. Centre on the brain, scale so it is ~2.3 units wide.
 const CX = 48000, CY = 30000, CZ = 30000, S = 40000;
 
-const INFERNO = `
-vec3 inferno(float t) {
-  const vec3 c0 = vec3(0.0002189403, 0.0016510046, -0.0194943213);
-  const vec3 c1 = vec3(0.1065134194, 0.5639564368, 3.9327123889);
-  const vec3 c2 = vec3(11.6024930825, -3.9728364280, -15.9423044496);
-  const vec3 c3 = vec3(-41.7039563149, 17.4363633540, 44.3541389330);
-  const vec3 c4 = vec3(77.1629156831, -33.4023570428, -81.8073002000);
-  const vec3 c5 = vec3(-71.3194669290, 32.6260706921, 73.2093482530);
-  const vec3 c6 = vec3(25.1311105960, -12.2426670600, -23.0703644400);
-  return c0+t*(c1+t*(c2+t*(c3+t*(c4+t*(c5+t*c6)))));
-}`;
-
 const POINT_VERT = `
 attribute float activity;
+attribute vec3 gcolor;
 varying float vA;
+varying vec3 vC;
 uniform float uScale;
 void main() {
   vA = activity;
+  vC = gcolor;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mv;
   gl_PointSize = uScale * (1.0 + 1.4 * vA) / -mv.z;
 }`;
 
-const POINT_FRAG = INFERNO + `
+const POINT_FRAG = `
 varying float vA;
+varying vec3 vC;
 void main() {
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
-  float soft = smoothstep(0.5, 0.1, d);
-  // At rest a neuron is a faint violet speck; 139k of them add up to the
-  // brain's shape without washing it out. A spike goes through the inferno
-  // ramp and carries almost all of the light.
-  vec3 rest = vec3(0.09, 0.04, 0.17);
-  vec3 c = mix(rest, inferno(0.15 + 0.75 * vA), smoothstep(0.0, 0.35, vA));
-  // Kept low so 139k additive points resolve as points rather than a glow.
-  float a = soft * (0.02 + 0.32 * vA);
+  float soft = smoothstep(0.5, 0.3, d);
+  // At rest a neuron is a dim dot in its group's colour; a spike lifts it
+  // towards white. Alpha stays low so 139k dots read as dots, not a glow.
+  vec3 c = mix(vC * 0.55, mix(vC, vec3(1.0), 0.55), smoothstep(0.0, 0.5, vA));
+  float a = soft * (0.05 + 0.35 * vA);
   gl_FragColor = vec4(c * a, a);
 }`;
 
@@ -70,7 +60,7 @@ varying vec3 vN; varying vec3 vV;
 uniform vec3 uColor;
 void main() {
   float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
-  gl_FragColor = vec4(uColor, 0.02 + 0.30 * f);
+  gl_FragColor = vec4(uColor, 0.015 + 0.16 * f);
 }`;
 
 export function BrainView({ bus, className }: { bus: FrameBus; className?: string }) {
@@ -141,8 +131,15 @@ export function BrainView({ bus, className }: { bus: FrameBus; className?: strin
         pos[i * 3 + 1] = -(r.somaXYZ[i * 3 + 1] - CY) / S;
         pos[i * 3 + 2] = -(r.somaXYZ[i * 3 + 2] - CZ) / S;
       }
+      const col = new Float32Array(n * 3);
+      const palette = FUNCTION_GROUPS.map((gr) => new THREE.Color(gr.color));
+      for (let i = 0; i < n; i++) {
+        const c = palette[r.somaGroup[i]] ?? palette[5];
+        col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      }
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      g.setAttribute("gcolor", new THREE.BufferAttribute(col, 3));
       activityAttr = new THREE.BufferAttribute(new Uint8Array(n), 1, true);
       activityAttr.setUsage(THREE.DynamicDrawUsage);
       g.setAttribute("activity", activityAttr);
