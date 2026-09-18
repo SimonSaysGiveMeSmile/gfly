@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full overflow-hidden">
-      <body className="h-full flex flex-col overflow-hidden">
+    <html lang="en" className="lg:h-full lg:overflow-hidden">
+      <body className="flex min-h-full flex-col lg:h-full lg:overflow-hidden">
         <div className="wash" aria-hidden />
         <SiteHeader />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 lg:overflow-y-auto">{children}</main>
         <SiteFooter />
       </body>
     </html>

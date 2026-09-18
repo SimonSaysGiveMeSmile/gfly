@@ -19,14 +19,14 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="mx-auto h-full w-full max-w-[1400px] px-6 lg:px-10 py-2 flex flex-col overflow-hidden">
+    <article className="mx-auto w-full max-w-[1400px] px-4 lg:px-10 py-2 flex flex-col lg:h-full lg:overflow-hidden">
       <header className="mb-2 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
         <h1 className="t-title mt-1">{product.title}</h1>
         <p className="t-foot mt-1 max-w-2xl">{product.summary}</p>
       </header>
 
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0">
         {product.slug === "baseline-room" ? (
           <>
             <Runner />

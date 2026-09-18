@@ -1,6 +1,6 @@
 export function SiteFooter() {
   return (
-    <footer className="mx-auto w-full max-w-[1400px] px-6 py-12 lg:px-10">
+    <footer className="mx-auto w-full max-w-[1400px] px-4 py-6 lg:px-10 lg:py-12">
       <div className="t-foot flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p>
           Data: MaleCNS v1.0, Janelia Research Campus and Google Research, CC-BY 4.0.

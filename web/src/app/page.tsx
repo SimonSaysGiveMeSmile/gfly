@@ -11,7 +11,7 @@ const FACTS = [
 
 export default function Home() {
   return (
-    <div className="mx-auto h-full max-w-[1400px] px-6 lg:px-10 flex flex-col overflow-hidden">
+    <div className="mx-auto max-w-[1400px] px-5 lg:px-10 flex flex-col lg:h-full lg:overflow-hidden">
       <section className="grid gap-6 py-8 lg:grid-cols-12 lg:py-12 flex-shrink-0">
         <div className="lg:col-span-7">
           <p className="t-cap rise">Fruit fly · complete nervous system · Janelia and Google, 2026</p>
@@ -44,7 +44,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="pb-12 flex-1 overflow-y-auto min-h-0">
+      <section className="pb-12 lg:flex-1 lg:overflow-y-auto lg:min-h-0">
         <h2 className="t-title">Experiments</h2>
         <p className="t-body mt-2">Each one is a claim about what the wiring can do, and a test of it.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

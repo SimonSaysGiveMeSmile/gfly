@@ -364,8 +364,10 @@ export function MahjongView({ store, me, view, onPick, onHover, className }: {
       }
 
       // Glide between the seat view and the close look at the desk.
+      // Narrow screens open the vertical field so the hand still fits across.
       const preset = PRESETS[viewRef.current];
-      wantPos.set(...preset.pos); wantLook.set(...preset.look); wantFov = preset.fov;
+      const forAspect = (2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(78) / 2) / camera.aspect)) * 180 / Math.PI;
+      wantPos.set(...preset.pos); wantLook.set(...preset.look); wantFov = Math.min(105, Math.max(preset.fov, forAspect));
       const ck = Math.min(1, dt * 4);
       if (camRig.position.distanceToSquared(wantPos) > 1e-8 || Math.abs(camera.fov - wantFov) > 0.01) {
         camRig.position.lerp(wantPos, ck);
