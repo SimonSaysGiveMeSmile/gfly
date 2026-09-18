@@ -9,7 +9,7 @@ export type BowlingKey =
 export const dict: LocalDict<BowlingKey> = {
   en: {
     "lobby.title": "Pick a ball",
-    "lobby.body": "Ten frames on a tabletop lane in the saloon, against one fly in a hat. Real scoring: strikes, spares, the tenth frame's extra balls. It loads the fly and the furniture once, about 4 MB.",
+    "lobby.body": "A lane laid on the lawn, at your size, and one fly bowling beside you. Real scoring: strikes, spares, the tenth frame's extra balls. It loads the fly once, about 3 MB.",
     "lobby.sit": "Step up",
     you: "You", "turn.you": "Your ball", "turn.fly": "{name} is on the approach", rolling: "Rolling",
     frame: "Frame {n}", total: "Total",
@@ -20,12 +20,12 @@ export const dict: LocalDict<BowlingKey> = {
     youWin: "You win, {a} to {b}.", flyWins: "{name} wins, {b} to {a}.", tie: "A tie, {a} each.",
     "view.seat": "Seat", "view.top": "Above", brains: "Brains",
     "brains.title": "Let the fly's connectome choose between its lines",
-    caption: "Move the pointer across the pin deck to choose where the ball should arrive, pick a hook so it curves in late, then click the lane or press Roll. Pins fall away from the ball and take the pins behind them. The fly rolls a few lines a bowler would try in the same simulation you watch, pockets, the head pin, whatever is left standing, and with Brains on its mushroom body chooses among the best three and learns from the pin count.",
+    caption: "Move the pointer across the pin deck to choose where the ball should arrive, pick a hook so it curves in late, then click the lane or press Roll. The ball and the pins are rigid bodies on the lane: a struck pin takes the impulse and slides into the pins behind, a pin going over sweeps the one behind it, and pins that leave the deck are down. The fly rolls a few lines a bowler would try in the same simulation you watch, pockets, the head pin, whatever is left standing, and with Brains on its mushroom body chooses among the best three and learns from the pin count.",
     "brain.note": "One live copy of the {tier} brain, for the fly across the lane. It picks between the best lines and learns from what falls.",
   },
   zh: {
     "lobby.title": "选一个球",
-    "lobby.body": "酒馆里桌面球道上的十格保龄球，对手是一只戴帽子的果蝇。真实计分：全中、补中、第十格的加球。首次加载果蝇和家具约 4 MB。",
+    "lobby.body": "草坪上按你的尺寸铺的一条球道，身边有一只果蝇轮流投球。真实计分：全中、补中、第十格的加球。首次加载果蝇约 3 MB。",
     "lobby.sit": "上前",
     you: "你", "turn.you": "该你投球", "turn.fly": "{name} 在助跑", rolling: "球在滚",
     frame: "第 {n} 格", total: "总分",
@@ -41,7 +41,7 @@ export const dict: LocalDict<BowlingKey> = {
   },
   az: {
     "lobby.title": "Top seçin",
-    "lobby.body": "Salunda masaüstü cığırda on freym, papaqlı bir milçəyə qarşı. Əsl hesab: strayklar, speyrlər, onuncu freymin əlavə topları. Milçək və mebel bir dəfə, təxminən 4 MB yüklənir.",
+    "lobby.body": "Çəmənlikdə, sizin ölçünüzdə bir cığır və yanınızda növbə ilə atan bir milçək. Əsl hesab: strayklar, speyrlər, onuncu freymin əlavə topları. Milçək bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Yaxınlaşın",
     you: "Siz", "turn.you": "Sizin topunuz", "turn.fly": "{name} yaxınlaşır", rolling: "Top gedir",
     frame: "Freym {n}", total: "Cəmi",

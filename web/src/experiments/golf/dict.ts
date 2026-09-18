@@ -8,7 +8,7 @@ export type GolfKey =
 export const dict: LocalDict<GolfKey> = {
   en: {
     "lobby.title": "Five holes",
-    "lobby.body": "A putting green on the tea table with a wooden rim and a few blocks to bank off, five holes, against one fly. Fewest strokes wins. It loads the fly and the furniture once, about 3 MB.",
+    "lobby.body": "A green in the garden with slopes to read, at your size, five holes against one fly. Fewest strokes wins. It loads the fly once, about 3 MB.",
     "lobby.sit": "Tee off",
     you: "You", "turn.you": "Your putt", "turn.fly": "{name} is reading the green", rolling: "Rolling",
     hole: "Hole {n}", par: "par {n}", strokes: "{n} strokes", total: "Total",
@@ -18,12 +18,12 @@ export const dict: LocalDict<GolfKey> = {
     youWin: "You win the round, {a} to {b}.", flyWins: "{name} wins the round, {b} to {a}.", tie: "All square at {a}.",
     "view.seat": "Seat", "view.top": "Above", brains: "Brains",
     "brains.title": "Let the fly's connectome choose between its lines",
-    caption: "Move the pointer over the green and click where the ball should stop; the engine rolls it there, bouncing off the rim and the blocks on the way, and the cup takes it if it arrives slowly. Putts alternate; six strokes and you pick up. The fly reads a straight putt, a lag and a bank off each rim in the same simulation you see, and with Brains on its mushroom body chooses among the best three and learns from where the ball finished.",
+    caption: "Move the pointer over the green and click where the ball would stop on a flat green; the ball then rolls down whatever slope it meets, so read the break and aim up the hill. The cup takes it if it arrives slowly; the fringe and the rough slow it hard. The one farther from the cup putts next; six strokes and you pick up. The fly reads the green by trying lines either side of the cup at a few paces in the same simulation you see, and with Brains on its mushroom body chooses among the best three and learns from where the ball finished.",
     "brain.note": "One live copy of the {tier} brain, for the fly across the green. It picks between the best lines and learns from where they finish.",
   },
   zh: {
     "lobby.title": "五个洞",
-    "lobby.body": "茶桌上的推杆果岭，木边框和几块可以借力的木块，五个洞，对手是一只果蝇。杆数少者胜。首次加载果蝇和家具约 3 MB。",
+    "lobby.body": "花园里一片有坡度可读的果岭，按你的尺寸，五个洞，对手是一只果蝇。杆数少者胜。首次加载果蝇约 3 MB。",
     "lobby.sit": "开球",
     you: "你", "turn.you": "该你推杆", "turn.fly": "{name} 在读果岭", rolling: "球在滚",
     hole: "第 {n} 洞", par: "标准杆 {n}", strokes: "{n} 杆", total: "总杆",
@@ -38,7 +38,7 @@ export const dict: LocalDict<GolfKey> = {
   },
   az: {
     "lobby.title": "Beş çuxur",
-    "lobby.body": "Çay masasında taxta kənarlı və bir neçə blok olan patting sahəsi, beş çuxur, bir milçəyə qarşı. Ən az vuruş qalib gəlir. Milçək və mebel bir dəfə, təxminən 3 MB yüklənir.",
+    "lobby.body": "Bağda, sizin ölçünüzdə, oxunası yamacları olan bir grin, beş çuxur, bir milçəyə qarşı. Ən az vuruş qalib gəlir. Milçək bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Başla",
     you: "Siz", "turn.you": "Sizin vuruşunuz", "turn.fly": "{name} sahəni oxuyur", rolling: "Top gedir",
     hole: "Çuxur {n}", par: "par {n}", strokes: "{n} vuruş", total: "Cəmi",

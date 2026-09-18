@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Tennis on the tea table. The court is the velvet texture dyed clay
- * with its lines painted in a canvas, a net of dark gauze across the
- * middle, and a yellow ball that flies in an arc from one runner to the
- * spot the hitter chose. You are the runner on the near baseline; one fly
- * on the north stool is the other. Each shot is decided by the engine and
- * then flown, so the fly can weigh its shots before it hits.
+ * Tennis in the garden. A hard court painted in a canvas lies on the lawn
+ * with a net of dark gauze; you stand on the near baseline and the camera
+ * is your eyes, one fly stands on the far one and runs for the ball. The
+ * engine flies every ball under gravity before it is drawn, so the fly can
+ * weigh its shots in the same physics before it hits.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { TableScene, type Preset } from "@/lib/three/tableScene";
+import { FieldScene } from "@/lib/three/fieldScene";
+import type { Preset } from "@/lib/three/tableScene";
 import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
 import { useMedia } from "@/lib/useMedia";
@@ -18,31 +18,31 @@ import { useBodyKind } from "@/lib/sim/body";
 import { FlyBrains, TABLE_SEATS, type BrainsApi } from "../shared/FlyBrains";
 import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
 import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
-import { canvasTexture, dot, loadImage, ring } from "../shared/tableAssets";
+import { canvasTexture, dot } from "../shared/tableAssets";
 import { dict } from "./dict";
-import { callOf, CL, createGame, CW, hit, SERVICE, type Flight, type GameState, type HitResult, type Pace, type Pt } from "./engine";
+import { BALL_R, callOf, CL, createGame, CW, CW2, hit, homeZ, NET_H, SERVICE, serveBox, type Flight, type GameState, type HitResult, type Pace, type Pt } from "./engine";
 import { getBestShots } from "./bot";
 
 const ME = 0, FLY = 2;
 const SEATS = TABLE_SEATS.filter((s) => s.seat === FLY);
-const BALL_R = 0.009, NET_H = 0.036, PX = 1024;
+const ORIGIN = new THREE.Vector3();
 
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
-  seat: { pos: [0, 0.48, 0.74], look: [0, 0.02, -0.06], fov: 50 },
-  top: { pos: [0, 0.92, 0.02], look: [0, 0.02, -0.02], fov: 40 },
+  seat: { pos: [0, 0.21, 0.3], look: [0, 0.03, -1.6], fov: 58 },
+  top: { pos: [0, 3.2, 1.2], look: [0, 0, -0.1], fov: 50 },
 };
 
 class Store {
   game: GameState | null = null;
-  flight: { flight: Flight; t: number } | null = null;
+  flight: { flight: Flight; t: number; by: 0 | 1 } | null = null;
   target: Pt | null = null;
   pace: Pace = "firm";
   actor: number | null = null;
   version = 0;
   bump(actor: number | null = null) { this.actor = actor; this.version++; }
   set(game: GameState) { this.game = game; }
-  fly(flight: Flight, actor: number) { this.flight = { flight, t: 0 }; this.bump(actor); }
+  fly(flight: Flight, by: 0 | 1) { this.flight = { flight, t: 0, by }; this.bump(by === 0 ? ME : FLY); }
   land() { this.flight = null; }
   setTarget(t: Pt | null) { this.target = t; }
   setPace(p: Pace) { this.pace = p; }
@@ -58,67 +58,61 @@ function TennisView({ store, view, body, onHit, onLanded, className }: { store: 
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const ts = new TableScene(el, {
-      body, set: "tea", presets: PRESETS, view: viewRef.current, seated: [FLY],
-      mat: { shape: "square", size: 0.98, texture: "velvet", color: 0x8a4a34 },
-    });
-    const { scene, tableTop, renderer, camera } = ts;
+    const ts = new FieldScene(el, { body, presets: PRESETS, view: viewRef.current, creature: { pos: [0, 0, homeZ(1)], yaw: Math.PI } });
+    const { scene, renderer, camera } = ts;
     const group = new THREE.Group();
     scene.add(group);
-    const TOP = tableTop + 0.0075;
 
-    // The court, painted on the clay.
+    // The court: an acrylic hard court with its lines, painted in a canvas.
+    const PW = 1024, PH = 2048;
     const canvas = document.createElement("canvas");
-    canvas.width = PX / 2; canvas.height = PX;
+    canvas.width = PW; canvas.height = PH;
     const ctx = canvas.getContext("2d")!;
+    const MW = CW2 + 0.9, ML = CL + 1.4;                       // the painted slab, with run-off
+    const sx = PW / MW, sz = PH / ML;
+    const X = (x: number) => (x + MW / 2) * sx, Z = (z: number) => (z + ML / 2) * sz;
+    ctx.fillStyle = "#2f6f4a"; ctx.fillRect(0, 0, PW, PH);            // run-off
+    ctx.fillStyle = "#2a5aa6"; ctx.fillRect(X(-CW2 / 2), Z(-CL / 2), CW2 * sx, CL * sz);   // the court
+    ctx.strokeStyle = "#f4f4f0"; ctx.lineWidth = 0.05 * sx; ctx.lineCap = "butt";
+    ctx.strokeRect(X(-CW2 / 2), Z(-CL / 2), CW2 * sx, CL * sz);
+    for (const x of [-CW / 2, CW / 2]) { ctx.beginPath(); ctx.moveTo(X(x), Z(-CL / 2)); ctx.lineTo(X(x), Z(CL / 2)); ctx.stroke(); }
+    for (const z of [-SERVICE, SERVICE]) { ctx.beginPath(); ctx.moveTo(X(-CW / 2), Z(z)); ctx.lineTo(X(CW / 2), Z(z)); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(X(0), Z(-SERVICE)); ctx.lineTo(X(0), Z(SERVICE)); ctx.stroke();
+    for (const z of [-CL / 2, CL / 2]) { ctx.beginPath(); ctx.moveTo(X(0), Z(z)); ctx.lineTo(X(0), Z(z - Math.sign(z) * 0.06)); ctx.stroke(); }
     const tex = canvasTexture(canvas, renderer);
-    const paint = (velvet: HTMLImageElement | null) => {
-      const w = canvas.width, h = canvas.height;
-      if (velvet) { ctx.drawImage(velvet, 0, 0, w, h); ctx.fillStyle = "rgba(196,96,58,0.86)"; } else ctx.fillStyle = "#b8623a";
-      ctx.fillRect(0, 0, w, h);
-      // Court metres to pixels: the canvas covers CW + 0.12 across and CL + 0.12 along.
-      const sx = w / (CW + 0.12), sz = h / (CL + 0.12);
-      const X = (x: number) => (x + CW / 2 + 0.06) * sx, Z = (z: number) => (z + CL / 2 + 0.06) * sz;
-      ctx.strokeStyle = "#f4efe6"; ctx.lineWidth = w * 0.012; ctx.lineCap = "butt";
-      ctx.strokeRect(X(-CW / 2), Z(-CL / 2), CW * sx, CL * sz);
-      for (const z of [-SERVICE, SERVICE]) { ctx.beginPath(); ctx.moveTo(X(-CW / 2), Z(z)); ctx.lineTo(X(CW / 2), Z(z)); ctx.stroke(); }
-      ctx.beginPath(); ctx.moveTo(X(0), Z(-SERVICE)); ctx.lineTo(X(0), Z(SERVICE)); ctx.stroke();
-      for (const z of [-CL / 2, CL / 2]) { ctx.beginPath(); ctx.moveTo(X(0), Z(z)); ctx.lineTo(X(0), Z(z - Math.sign(z) * 0.02)); ctx.stroke(); }
-      tex.needsUpdate = true;
-    };
-    paint(null);
-    loadImage("/assets/tex/velour_velvet/diffuse.jpg").then((im) => paint(im)).catch((e) => console.error(e));
-    const court = new THREE.Mesh(new THREE.PlaneGeometry(CW + 0.12, CL + 0.12), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
-    court.rotation.x = -Math.PI / 2; court.position.y = TOP + 0.0006; court.receiveShadow = true; group.add(court);
+    const court = new THREE.Mesh(new THREE.PlaneGeometry(MW, ML), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+    court.rotation.x = -Math.PI / 2; court.position.y = 0.002; court.receiveShadow = true; group.add(court);
 
-    // The net: posts, a band of gauze, the tape.
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.5, metalness: 0.3 });
-    for (const x of [-(CW / 2 + 0.03), CW / 2 + 0.03]) {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, NET_H + 0.004, 10), postMat);
-      p.position.set(x, TOP + (NET_H + 0.004) / 2, 0); p.castShadow = true; group.add(p);
+    // The net.
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5, metalness: 0.4 });
+    for (const x of [-(CW2 / 2 + 0.11), CW2 / 2 + 0.11]) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, NET_H + 0.02, 12), postMat);
+      p.position.set(x, (NET_H + 0.02) / 2, 0); p.castShadow = true; group.add(p);
     }
-    const gauze = new THREE.Mesh(new THREE.PlaneGeometry(CW + 0.06, NET_H), new THREE.MeshStandardMaterial({ color: 0x1c1a18, transparent: true, opacity: 0.55, side: THREE.DoubleSide, roughness: 1 }));
-    gauze.position.set(0, TOP + NET_H / 2, 0); group.add(gauze);
-    const tape = new THREE.Mesh(new THREE.BoxGeometry(CW + 0.06, 0.004, 0.002), new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.8 }));
-    tape.position.set(0, TOP + NET_H, 0); tape.castShadow = true; group.add(tape);
+    const gauze = new THREE.Mesh(new THREE.PlaneGeometry(CW2 + 0.22, NET_H), new THREE.MeshStandardMaterial({ color: 0x141414, transparent: true, opacity: 0.6, side: THREE.DoubleSide, roughness: 1 }));
+    gauze.position.set(0, NET_H / 2, 0); gauze.castShadow = true; group.add(gauze);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(CW2 + 0.22, 0.012, 0.006), new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 }));
+    tape.position.set(0, NET_H, 0); group.add(tape);
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.012, NET_H, 0.004), new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 }));
+    strap.position.set(0, NET_H / 2, 0); group.add(strap);
 
-    // The ball and the runners' marks.
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 16), new THREE.MeshStandardMaterial({ color: 0xd9e64a, roughness: 0.7 }));
+    // The ball, its shadow, the aim mark.
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 20, 14), new THREE.MeshStandardMaterial({ color: 0xdfe84a, roughness: 0.75 }));
     ball.castShadow = true; group.add(ball);
-    const shadow = dot(BALL_R * 0.9, 0x000000, 0.35); group.add(shadow);
-    const marks = [ring(0.02, 0x4d8dff, 0.85), ring(0.02, 0xf0b25a, 0.85)];
-    for (const m of marks) { m.position.y = TOP + 0.001; group.add(m); }
-    const aim = dot(0.011, 0xfff1d6, 0.7); group.add(aim);
+    const shadow = dot(BALL_R * 1.1, 0x000000, 0.4); group.add(shadow);
+    const aim = dot(0.03, 0xfff1d6, 0.7); group.add(aim);
+    const box = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.1, depthWrite: false }));
+    box.rotation.x = -Math.PI / 2; box.position.y = 0.004; group.add(box);
 
     // Pointing at the far half.
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -TOP);
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), hitP = new THREE.Vector3();
     const aimAt = (cx: number, cy: number) => {
       const r = renderer.domElement.getBoundingClientRect();
       ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
       if (!ray.ray.intersectPlane(plane, hitP)) return;
-      store.setTarget({ x: Math.max(-CW / 2 - 0.05, Math.min(CW / 2 + 0.05, hitP.x)), z: Math.max(-CL / 2 - 0.05, Math.min(-0.02, hitP.z)) });
+      store.setTarget({ x: Math.max(-CW2 / 2 - 0.3, Math.min(CW2 / 2 + 0.3, hitP.x)), z: Math.max(-CL / 2 - 0.4, Math.min(-0.05, hitP.z)) });
     };
     const onMove = (e: PointerEvent) => aimAt(e.clientX, e.clientY);
     const onClick = (e: MouseEvent) => { aimAt(e.clientX, e.clientY); hitRef.current(); };
@@ -126,38 +120,43 @@ function TennisView({ store, view, body, onHit, onLanded, className }: { store: 
     renderer.domElement.addEventListener("pointerdown", onMove);
     renderer.domElement.addEventListener("click", onClick);
 
-    let seen = -1;
-    const tmp = new THREE.Vector3();
+    let seen = -1, sentFor: GameState | null = null, reached = false;
+    const you = new THREE.Vector3(), tmp = new THREE.Vector3();
     ts.onFrame = (dt) => {
       ts.view = viewRef.current;
       const g = store.game;
       if (!g) return;
-      if (store.version !== seen) { seen = store.version; if (store.actor !== null) ts.reach(store.actor); }
-      for (let i = 0; i < 2; i++) { const r = g.runners[i]; tmp.set(r.x, TOP + 0.001, r.z); marks[i].position.lerp(tmp, Math.min(1, dt * 6)); }
+      if (store.version !== seen) { seen = store.version; }
       const f = store.flight;
+      // The fly runs to where the state says it plays from; during a flight that is the meeting point.
+      if (sentFor !== g) { sentFor = g; ts.send(g.runners[1].x, g.runners[1].z, Math.PI); reached = false; if (store.actor === FLY) ts.reach(); }
       if (f) {
         f.t += dt;
-        const { from, to, time } = f.flight;
-        const k = Math.min(1, f.t / time);
-        const x = from.x + (to.x - from.x) * k, z = from.z + (to.z - from.z) * k;
-        const apex = 0.05 + time * 0.06;
-        const y = TOP + 0.03 * (1 - k) + apex * 4 * k * (1 - k) + BALL_R;
-        ball.position.set(x, y, z);
-        shadow.position.set(x, TOP + 0.0012, z);
-        if (f.t >= time + 0.25) { store.land(); landedRef.current(); }
+        const { path, meet } = f.flight;
+        const n = path.length / 3;
+        const i = Math.min(n - 1, Math.floor(f.t * 60));
+        ball.position.set(path[i * 3], path[i * 3 + 1], path[i * 3 + 2]);
+        shadow.position.set(path[i * 3], 0.003, path[i * 3 + 2]);
+        if (meet >= 0 && i >= meet - 6 && !reached) { reached = true; if (f.by === 0) ts.reach(); }
+        if (f.t >= (n - 1) / 60 + 0.15) { store.land(); landedRef.current(); }
       } else {
-        const b = g.ball;
-        tmp.set(b.x, TOP + BALL_R, b.z);
+        const b = g.ballAt;
+        tmp.set(b.x, b.y, b.z);
         ball.position.lerp(tmp, Math.min(1, dt * 8));
-        shadow.position.set(ball.position.x, TOP + 0.0012, ball.position.z);
+        shadow.position.set(ball.position.x, 0.003, ball.position.z);
       }
+      // You are the camera: at your runner's spot on the baseline, looking down the court.
+      you.set(g.runners[0].x, 0, g.runners[0].z + 0.02);
+      ts.place(viewRef.current === "top" ? ORIGIN : you, 0);
       const mine = g.status === "active" && g.turn === 0 && !f && store.target;
       aim.visible = !!mine;
-      if (mine && store.target) aim.position.set(store.target.x, TOP + 0.0014, store.target.z);
+      if (mine && store.target) aim.position.set(store.target.x, 0.005, store.target.z);
+      box.visible = g.status === "active" && g.serving && g.turn === 0 && !f;
+      if (box.visible) { const bx = serveBox(g); box.scale.set(bx.x1 - bx.x0, bx.z1 - bx.z0, 1); box.position.set((bx.x0 + bx.x1) / 2, 0.004, (bx.z0 + bx.z1) / 2); }
     };
     (window as unknown as { __gflyTennis?: unknown }).__gflyTennis = {
       state: () => store.game, aim: (x: number, z: number) => store.setTarget({ x, z }), pace: (p: Pace) => store.setPace(p), hit: () => hitRef.current(),
-      point: (x: number, z: number) => ts.toScreen(new THREE.Vector3(x, TOP, z)),
+      point: (x: number, z: number) => ts.toScreen(new THREE.Vector3(x, 0, z)),
     };
 
     return () => {
@@ -198,7 +197,9 @@ export function TennisTable() {
     const result = hit(g, target, p);
     pending.current = { result, by, code };
     setFlying(true);
-    store.fly(result.flight, by === 0 ? ME : FLY);
+    // The runners move as soon as the ball is struck, so the fly runs during the flight.
+    store.set({ ...g, runners: result.state.runners, rally: result.state.rally });
+    store.fly(result.flight, by);
   }, [store]);
 
   const hitMine = useCallback(() => {
@@ -221,7 +222,6 @@ export function TennisTable() {
     }
   }, [store]);
 
-  // The fly's shot.
   useEffect(() => {
     if (!game || game.status !== "active" || game.turn !== 1 || flying) return;
     let cancelled = false;
@@ -233,7 +233,7 @@ export function TennisTable() {
       const chosen = r?.item ?? cands[0];
       strike(chosen.target, chosen.pace, 1, r ? code(chosen) : null);
     };
-    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 700);
+    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 650);
     return () => { cancelled = true; if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
   }, [game, flying, strike]);
 
@@ -260,7 +260,7 @@ export function TennisTable() {
             <span className="t-foot num">{status}</span>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-1.5 pointer-events-auto">
+            <div className="hud pointer-events-auto gap-1.5" style={{ flexDirection: "row" }}>
               <div className="seg seg-sm">
                 {(["seat", "top"] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{lt(v === "seat" ? "view.seat" : "view.top")}</button>)}
               </div>

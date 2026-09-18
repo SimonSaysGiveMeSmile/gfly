@@ -9,7 +9,7 @@ export type TennisKey =
 export const dict: LocalDict<TennisKey> = {
   en: {
     "lobby.title": "Serve or receive",
-    "lobby.body": "A short set of tennis on a court the size of the tea table, against one fly. Real scoring, first to four games. It loads the fly and the furniture once, about 3 MB.",
+    "lobby.body": "A hard court in the garden, at your size, and one fly across the net. Real scoring, first to four games. It loads the fly once, about 3 MB.",
     "lobby.sit": "Take the court",
     you: "You", "turn.you": "Your shot", "turn.fly": "{name} is on it", flying: "In the air",
     serve: "Serve", second: "Second serve", games: "Games {a}–{b}",
@@ -20,12 +20,12 @@ export const dict: LocalDict<TennisKey> = {
     youWin: "You take the set, {a}–{b}.", flyWins: "{name} takes the set, {b}–{a}.",
     "view.seat": "Seat", "view.top": "Above", brains: "Brains",
     "brains.title": "Let the fly's connectome choose between its shots",
-    caption: "Move the pointer over the fly's half and click where the ball should land; choose a pace first. Harder balls land further from where you asked, and so do balls you had to run for. If the other runner cannot reach the bounce in time, it is a winner. Serves must land in a service box; a fault gives a second serve. The fly weighs a few targets a coach would name, the open court, behind you, a drop, the middle, and with Brains on its mushroom body chooses among the best three and learns from the point.",
+    caption: "Point at the far half and click where the ball should land; choose a pace first. The ball really flies: gravity, the net, a bounce. Harder balls and balls you had to run for leave the line more, so they find the net or the tramlines more often. Whoever cannot reach the top of the bounce in time has lost the point. Serves must land in the diagonal box; a fault gives a second serve. The fly weighs a few targets a coach would name, the open court, behind you, a drop, the middle, and with Brains on its mushroom body chooses among the best three and learns from the point.",
     "brain.note": "One live copy of the {tier} brain, for the fly across the net. It picks between its shots and learns from the point.",
   },
   zh: {
     "lobby.title": "发球或接发",
-    "lobby.body": "在茶桌大小的球场上打一个短盘网球，对手是一只果蝇。真实计分，先赢四局者胜。首次加载果蝇和家具约 3 MB。",
+    "lobby.body": "花园里一片按你的尺寸建的硬地球场，网对面是一只果蝇。真实计分，先赢四局者胜。首次加载果蝇约 3 MB。",
     "lobby.sit": "上场",
     you: "你", "turn.you": "该你击球", "turn.fly": "{name} 在跑动", flying: "球在飞",
     serve: "发球", second: "第二发", games: "局数 {a}–{b}",
@@ -41,7 +41,7 @@ export const dict: LocalDict<TennisKey> = {
   },
   az: {
     "lobby.title": "Serv və ya qəbul",
-    "lobby.body": "Çay masası boyda kortda qısa tennis seti, bir milçəyə qarşı. Əsl hesab, dörd oyunu ilk qazanan udur. Milçək və mebel bir dəfə, təxminən 3 MB yüklənir.",
+    "lobby.body": "Bağda, sizin ölçünüzdə sərt kort və torun o tayında bir milçək. Əsl hesab, dörd oyunu ilk qazanan udur. Milçək bir dəfə, təxminən 3 MB yüklənir.",
     "lobby.sit": "Korta çıx",
     you: "Siz", "turn.you": "Sizin zərbəniz", "turn.fly": "{name} çatır", flying: "Havadadır",
     serve: "Serv", second: "İkinci serv", games: "Oyunlar {a}–{b}",

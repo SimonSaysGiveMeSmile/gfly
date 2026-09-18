@@ -1,53 +1,68 @@
 /**
- * Putting on a tabletop green: five holes on one square of felt with a
- * wooden rim and a few wooden blocks. A putt is rolled to rest before it
- * is drawn: friction slows the ball, the rim and the blocks bounce it, and
- * the cup takes it if it arrives slowly enough. You click where the ball
- * should come to rest on open felt; the engine finds the speed for that.
+ * Putting on a garden green at the creature's scale: a real green's size
+ * times 0.125, with slopes. The surface is a height field, a gentle tilt
+ * and a few smooth mounds per hole; the ball rolls down its gradient
+ * under scaled gravity and against the felt's friction, more in the
+ * fringe and much more in the rough, and the cup takes it if it arrives
+ * slowly enough. You click where the ball would stop on a flat green; on
+ * a slope you have to read the break, as anyone does.
  */
 
-export const GREEN = 0.8, BALL_R = 0.011, CUP_R = 0.021;
-const FRICTION = 0.3, RIM = 0.55, LIP = 0.34, DT = 1 / 240, FRAME = 1 / 60, MAX_T = 10;
+export const S = 0.125;
+export const GREEN_R = 1.9, FRINGE_R = 2.2, BALL_R = 0.008, CUP_R = 0.012, G = 9.81 * S;
+const MU_GREEN = 0.075, MU_FRINGE = 0.22, MU_ROUGH = 0.5, LIP = 0.22, DT = 1 / 240, FRAME = 1 / 60, MAX_T = 14;
 export const MAX_STROKES = 6;
 
-export interface Block { x: number; z: number; w: number; d: number }
-export interface Hole { tee: [number, number]; cup: [number, number]; blocks: Block[]; par: number }
+export interface Mound { x: number; z: number; a: number; s: number }
+export interface Hole { tee: [number, number]; cup: [number, number]; tilt: [number, number]; mounds: Mound[]; par: number }
 export const HOLES: Hole[] = [
-  { tee: [0, 0.3], cup: [0, -0.3], blocks: [], par: 2 },
-  { tee: [-0.26, 0.3], cup: [0.26, -0.28], blocks: [{ x: 0, z: 0, w: 0.05, d: 0.34 }], par: 3 },
-  { tee: [0.28, 0.3], cup: [-0.28, -0.3], blocks: [{ x: -0.1, z: -0.05, w: 0.18, d: 0.04 }, { x: 0.16, z: 0.1, w: 0.16, d: 0.04 }], par: 3 },
-  { tee: [0, 0.32], cup: [0, -0.32], blocks: [{ x: 0, z: -0.2, w: 0.2, d: 0.04 }], par: 3 },
-  { tee: [-0.3, 0.32], cup: [0.3, 0.3], blocks: [{ x: 0, z: 0.16, w: 0.04, d: 0.44 }], par: 3 },
+  { tee: [0, 0.55], cup: [0, -0.35], tilt: [0.006, 0], mounds: [], par: 2 },
+  { tee: [-0.7, 0.7], cup: [0.55, -0.5], tilt: [0, 0], mounds: [{ x: 0, z: 0.05, a: 0.022, s: 0.38 }], par: 2 },
+  { tee: [0.9, 0.35], cup: [-0.75, -0.25], tilt: [0, 0.01], mounds: [{ x: -0.15, z: 0.35, a: 0.026, s: 0.42 }], par: 2 },
+  { tee: [0.05, 1.15], cup: [0.1, -0.65], tilt: [0.004, -0.004], mounds: [{ x: 0.35, z: 0.2, a: 0.03, s: 0.4 }, { x: -0.3, z: 0.25, a: 0.03, s: 0.4 }], par: 3 },
+  { tee: [-1.05, -0.85], cup: [0.95, 0.75], tilt: [0.008, -0.006], mounds: [{ x: 0.1, z: -0.1, a: -0.02, s: 0.5 }], par: 3 },
 ];
+
+/** The green's height at (x, z). */
+export function height(h: Hole, x: number, z: number): number {
+  let y = h.tilt[0] * x + h.tilt[1] * z;
+  for (const m of h.mounds) { const dx = x - m.x, dz = z - m.z; y += m.a * Math.exp(-(dx * dx + dz * dz) / (2 * m.s * m.s)); }
+  return y;
+}
+function slope(h: Hole, x: number, z: number): [number, number] {
+  let gx = h.tilt[0], gz = h.tilt[1];
+  for (const m of h.mounds) {
+    const dx = x - m.x, dz = z - m.z, e = m.a * Math.exp(-(dx * dx + dz * dz) / (2 * m.s * m.s));
+    gx += e * (-dx / (m.s * m.s)); gz += e * (-dz / (m.s * m.s));
+  }
+  return [gx, gz];
+}
+const mu = (x: number, z: number) => { const r = Math.hypot(x, z); return r < GREEN_R ? MU_GREEN : r < FRINGE_R ? MU_FRINGE : MU_ROUGH; };
 
 export interface Putt { path: Float32Array; holed: boolean; final: [number, number]; duration: number }
 
-/** The speed that brings a ball to rest after `dist` metres on open felt. */
-export const speedFor = (dist: number) => Math.min(1.4, Math.sqrt(2 * FRICTION * Math.max(0.005, dist)));
+/** The speed that brings a ball to rest after `dist` metres on a flat green. */
+export const speedFor = (dist: number) => Math.min(1.6, Math.sqrt(2 * MU_GREEN * Math.max(0.005, dist)));
 
 export function simulate(hole: Hole, from: [number, number], angle: number, speed: number): Putt {
   let x = from[0], z = from[1], vx = Math.sin(angle) * speed, vz = -Math.cos(angle) * speed;
   const path: number[] = [x, z];
   let t = 0, next = FRAME, holed = false;
-  const half = GREEN / 2 - BALL_R;
   while (t < MAX_T) {
+    const [gx, gz] = slope(hole, x, z);
     const s = Math.hypot(vx, vz);
-    if (s < 0.008) break;
-    const k = Math.max(0, s - FRICTION * DT) / s;
-    vx *= k; vz *= k;
+    const m = mu(x, z);
+    // Downhill pull, and friction against the motion.
+    let ax = -G * gx, az = -G * gz;
+    if (s > 1e-4) { ax -= m * G * (vx / s); az -= m * G * (vz / s); }
+    else if (Math.hypot(ax, az) < m * G) { break; }                 // it sits still
+    vx += ax * DT; vz += az * DT;
+    const s2 = Math.hypot(vx, vz);
+    if (s > 1e-4 && s2 > 1e-4 && (vx * (vx - ax * DT) + vz * (vz - az * DT)) < 0 && Math.hypot(-G * gx, -G * gz) < m * G) { vx = vz = 0; break; }   // friction stopped it
     x += vx * DT; z += vz * DT; t += DT;
-    if (x < -half) { x = -half; vx = Math.abs(vx) * RIM; } else if (x > half) { x = half; vx = -Math.abs(vx) * RIM; }
-    if (z < -half) { z = -half; vz = Math.abs(vz) * RIM; } else if (z > half) { z = half; vz = -Math.abs(vz) * RIM; }
-    for (const b of hole.blocks) {
-      const hx = b.w / 2 + BALL_R, hz = b.d / 2 + BALL_R;
-      const dx = x - b.x, dz = z - b.z;
-      if (Math.abs(dx) >= hx || Math.abs(dz) >= hz) continue;
-      // Push out along the shallower axis and bounce.
-      if (hx - Math.abs(dx) < hz - Math.abs(dz)) { x = b.x + Math.sign(dx) * hx; vx = Math.sign(dx) * Math.abs(vx) * RIM; }
-      else { z = b.z + Math.sign(dz) * hz; vz = Math.sign(dz) * Math.abs(vz) * RIM; }
-    }
     const dc = Math.hypot(x - hole.cup[0], z - hole.cup[1]);
-    if (dc < CUP_R - BALL_R * 0.4 && Math.hypot(vx, vz) < LIP) { holed = true; x = hole.cup[0]; z = hole.cup[1]; path.push(x, z); break; }
+    if (dc < CUP_R - BALL_R * 0.35 && s2 < LIP) { holed = true; x = hole.cup[0]; z = hole.cup[1]; path.push(x, z); break; }
+    if (Math.hypot(x, z) > FRINGE_R + 1.2) { vx = vz = 0; break; }
     if (t >= next) { path.push(x, z); next += FRAME; }
   }
   path.push(x, z);
@@ -70,13 +85,15 @@ export function createGame(): GameState {
   return { hole: 0, balls: [[...h.tee], [...h.tee]], strokes: [0, 0], holed: [false, false], totals: [0, 0], turn: 0, status: "active", last: null };
 }
 
-/** Who putts next: alternate, skipping anyone who is in or has picked up. */
-function nextTurn(s: GameState, after: 0 | 1): 0 | 1 | null {
+/** Who putts next: the one farther from the cup, as the rules have it; anyone in or picked up is skipped. */
+function nextTurn(s: GameState): 0 | 1 | null {
   const done = (p: 0 | 1) => s.holed[p] || s.strokes[p] >= MAX_STROKES;
-  const other: 0 | 1 = after === 0 ? 1 : 0;
-  if (!done(other)) return other;
-  if (!done(after)) return after;
-  return null;
+  const cup = HOLES[s.hole].cup;
+  const d = (p: 0 | 1) => Math.hypot(s.balls[p][0] - cup[0], s.balls[p][1] - cup[1]);
+  if (done(0) && done(1)) return null;
+  if (done(0)) return 1;
+  if (done(1)) return 0;
+  return d(0) >= d(1) ? 0 : 1;
 }
 
 export function applyPutt(state: GameState, player: 0 | 1, putt: Putt): GameState {
@@ -88,7 +105,7 @@ export function applyPutt(state: GameState, player: 0 | 1, putt: Putt): GameStat
   holed[player] = putt.holed;
   const cup = HOLES[state.hole].cup;
   const s: GameState = { ...state, balls, strokes, holed, last: { player, holed: putt.holed, dist: Math.hypot(putt.final[0] - cup[0], putt.final[1] - cup[1]) } };
-  const nt = nextTurn(s, player);
+  const nt = nextTurn(s);
   if (nt === null) {
     const totals: [number, number] = [state.totals[0] + strokes[0], state.totals[1] + strokes[1]];
     return { ...s, totals, status: state.hole >= HOLES.length - 1 ? "over" : "hole" };

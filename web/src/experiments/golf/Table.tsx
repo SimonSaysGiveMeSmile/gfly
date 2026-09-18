@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * Putting on the tea table. The green is the velvet texture dyed grass
- * green inside a rim of Poly Haven wood, with wooden blocks to bank off;
- * a black cup, a little flag. Your ball is white, the fly's is yellow,
- * and they pass through each other, as markers would. A putt is rolled
- * to rest by the engine and then played back, so the fly can read its
- * lines in the same physics before it putts.
+ * Putting in the garden. The green is a height field of short grass with
+ * a darker fringe, a cup and a flag; your ball is white, the fly's is
+ * yellow, and they pass through each other as marked balls would. The
+ * camera stands behind your ball looking at the cup; the fly stands by its
+ * own ball and walks up to putt. A putt is rolled to rest by the engine
+ * and then played back, so the fly can read its lines in the same physics.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { TableScene, type Preset } from "@/lib/three/tableScene";
+import { FieldScene } from "@/lib/three/fieldScene";
+import type { Preset } from "@/lib/three/tableScene";
 import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
 import { useMedia } from "@/lib/useMedia";
@@ -20,17 +21,17 @@ import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
 import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
 import { dot } from "../shared/tableAssets";
 import { dict } from "./dict";
-import { applyPutt, BALL_R, createGame, CUP_R, GREEN, HOLES, MAX_STROKES, nextHole, simulate, speedFor, type GameState, type Putt } from "./engine";
+import { applyPutt, BALL_R, createGame, CUP_R, FRINGE_R, GREEN_R, height, HOLES, MAX_STROKES, nextHole, simulate, speedFor, type GameState, type Hole, type Putt } from "./engine";
 import { getBestLines } from "./bot";
 
 const ME = 0, FLY = 2;
 const SEATS = TABLE_SEATS.filter((s) => s.seat === FLY);
-const GREEN_H = 0.012, RIM = 0.025, RIM_H = 0.028;
+const ORIGIN = new THREE.Vector3();
 
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
-  seat: { pos: [0, 0.46, 0.62], look: [0, 0.02, -0.04], fov: 52 },
-  top: { pos: [0, 0.86, 0.03], look: [0, 0.02, -0.02], fov: 38 },
+  seat: { pos: [0, 0.2, 0.34], look: [0, 0.0, -0.7], fov: 55 },
+  top: { pos: [0, 3.4, 1.0], look: [0, 0, -0.1], fov: 50 },
 };
 
 class Store {
@@ -41,10 +42,12 @@ class Store {
   version = 0;
   bump(actor: number | null = null) { this.actor = actor; this.version++; }
   set(game: GameState) { this.game = game; }
-  play(result: Putt, player: 0 | 1, actor: number) { this.putt = { result, player, t: 0 }; this.bump(actor); }
+  play(result: Putt, player: 0 | 1) { this.putt = { result, player, t: 0 }; this.bump(player === 0 ? ME : FLY); }
   settle() { this.putt = null; }
   setTarget(t: [number, number] | null) { this.target = t; }
 }
+
+const yawToward = (fx: number, fz: number, tx: number, tz: number) => Math.atan2(-(tx - fx), -(tz - fz));
 
 function GolfView({ store, view, body, onPutt, onSettled, className }: { store: Store; view: View; body: BodyKind; onPutt: () => void; onSettled: () => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -56,56 +59,67 @@ function GolfView({ store, view, body, onPutt, onSettled, className }: { store: 
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const ts = new TableScene(el, {
-      body, set: "tea", presets: PRESETS, view: viewRef.current, seated: [FLY],
-      mat: { shape: "square", size: 0.96, texture: "velvet", color: 0x2c4a2e },
-    });
-    const { scene, tableTop, renderer, camera } = ts;
+    const t0 = HOLES[0].tee;
+    const ts = new FieldScene(el, { body, presets: PRESETS, view: viewRef.current, creature: { pos: [t0[0] + 0.15, 0, t0[1] + 0.05], yaw: 0 } });
+    const { scene, renderer, camera } = ts;
     const group = new THREE.Group();
     scene.add(group);
-    const TOP = tableTop + 0.0075 + GREEN_H;                    // the felt's surface
-    const BALL_Y = TOP + BALL_R;
 
+    // The green: a height field coloured by radius, short grass in, fringe, then the lawn.
+    const SIZE = 5.6, SEG = 140;
+    const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+    geo.rotateX(-Math.PI / 2);
+    const colors = new Float32Array(geo.attributes.position.count * 3);
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const loader = new THREE.TextureLoader();
-    const vel = (f: string) => { const t = loader.load(`/assets/tex/velour_velvet/${f}`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); return t; };
-    const grass = new THREE.MeshStandardMaterial({ color: 0x3f8f3c, normalMap: vel("nor_gl.jpg"), roughnessMap: vel("rough.jpg"), roughness: 1 });
-    const woodMap = loader.load("/assets/tex/wood_table_001/diffuse.jpg"); woodMap.colorSpace = THREE.SRGBColorSpace;
-    const wood = new THREE.MeshStandardMaterial({ map: woodMap, normalMap: loader.load("/assets/tex/wood_table_001/nor_gl.jpg"), color: 0xa87a4a, roughness: 0.55 });
-    const green = new THREE.Mesh(new THREE.BoxGeometry(GREEN, GREEN_H, GREEN), grass);
-    green.position.y = tableTop + 0.0075 + GREEN_H / 2; green.receiveShadow = true; group.add(green);
-    for (const [x, z, w, d] of [[-(GREEN / 2 + RIM / 2), 0, RIM, GREEN + RIM * 2], [GREEN / 2 + RIM / 2, 0, RIM, GREEN + RIM * 2], [0, -(GREEN / 2 + RIM / 2), GREEN, RIM], [0, GREEN / 2 + RIM / 2, GREEN, RIM]]) {
-      const r = new THREE.Mesh(new THREE.BoxGeometry(w, RIM_H, d), wood);
-      r.position.set(x, tableTop + 0.0075 + RIM_H / 2, z); r.castShadow = true; r.receiveShadow = true; group.add(r);
-    }
-    const blocks: THREE.Mesh[] = [];
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(CUP_R, CUP_R, 0.01, 32), new THREE.MeshStandardMaterial({ color: 0x050403, roughness: 1 }));
-    cup.position.y = TOP - 0.0045; group.add(cup);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.0014, 0.0014, 0.13, 8), new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.4 }));
-    pole.position.y = 0.065;
-    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.036, 0.022), new THREE.MeshStandardMaterial({ color: 0xd3382b, side: THREE.DoubleSide, roughness: 0.8 }));
-    flag.position.set(0.018, 0.115, 0);
-    const pin = new THREE.Group(); pin.add(pole, flag); pin.position.y = TOP; group.add(pin);
+    const vel = (f: string) => { const t = loader.load(`/assets/tex/velour_velvet/${f}`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 10); return t; };
+    const green = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, normalMap: vel("nor_gl.jpg"), normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: vel("rough.jpg"), roughness: 1 }));
+    green.receiveShadow = true; green.position.y = 0.001; group.add(green);
+    const cIn = new THREE.Color(0x5aa346), cFr = new THREE.Color(0x3f7d30), cOut = new THREE.Color(0x4f8a3a);
+    const shape = (h: Hole) => {
+      const pos = geo.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), z = pos.getZ(i);
+        const r = Math.hypot(x, z);
+        pos.setY(i, r < FRINGE_R + 0.4 ? height(h, x, z) * Math.max(0, Math.min(1, (FRINGE_R + 0.4 - r) / 0.4)) : 0);
+        const c = r < GREEN_R ? cIn : r < FRINGE_R ? cFr : cOut;
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      pos.needsUpdate = true; (geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+      geo.computeVertexNormals();
+    };
+
+    // Cup and flag.
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(CUP_R, CUP_R, 0.02, 32), new THREE.MeshStandardMaterial({ color: 0x050403, roughness: 1 }));
+    group.add(cup);
+    const rim = new THREE.Mesh(new THREE.RingGeometry(CUP_R, CUP_R + 0.003, 32), new THREE.MeshBasicMaterial({ color: 0xf4f4f0, side: THREE.DoubleSide }));
+    rim.rotation.x = -Math.PI / 2; group.add(rim);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.28, 8), new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.4 }));
+    pole.position.y = 0.14;
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.045), new THREE.MeshStandardMaterial({ color: 0xd3382b, side: THREE.DoubleSide, roughness: 0.8 }));
+    flag.position.set(0.035, 0.255, 0);
+    const pin = new THREE.Group(); pin.add(pole, flag); group.add(pin);
 
     const balls = [
-      new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 28, 18), new THREE.MeshStandardMaterial({ color: 0xf6f3ea, roughness: 0.35 })),
-      new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 28, 18), new THREE.MeshStandardMaterial({ color: 0xf2c14e, roughness: 0.35 })),
+      new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 16), new THREE.MeshStandardMaterial({ color: 0xf6f3ea, roughness: 0.35 })),
+      new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 16), new THREE.MeshStandardMaterial({ color: 0xf2c14e, roughness: 0.35 })),
     ];
     for (const b of balls) { b.castShadow = true; b.receiveShadow = true; group.add(b); }
 
-    // Aiming: a line to where the ball should stop.
-    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-    const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.5 }));
+    // Aiming: a line on the grass to where the ball would stop on the flat.
+    const N = 24;
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(Array.from({ length: N }, () => new THREE.Vector3()));
+    const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.6 }));
     group.add(line);
-    const mark = dot(0.012, 0xf0b25a, 0.7); group.add(mark);
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -TOP);
-    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), hit = new THREE.Vector3();
+    const mark = dot(0.016, 0xf0b25a, 0.8); group.add(mark);
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
     const aimAt = (cx: number, cy: number) => {
       const r = renderer.domElement.getBoundingClientRect();
       ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
-      if (!ray.ray.intersectPlane(plane, hit)) return;
-      const h = GREEN / 2 - BALL_R;
-      store.setTarget([Math.max(-h, Math.min(h, hit.x)), Math.max(-h, Math.min(h, hit.z))]);
+      const hit = ray.intersectObject(green)[0];
+      if (!hit) return;
+      store.setTarget([hit.point.x, hit.point.z]);
     };
     const onMove = (e: PointerEvent) => aimAt(e.clientX, e.clientY);
     const onClick = (e: MouseEvent) => { aimAt(e.clientX, e.clientY); puttRef.current(); };
@@ -113,27 +127,36 @@ function GolfView({ store, view, body, onPutt, onSettled, className }: { store: 
     renderer.domElement.addEventListener("pointerdown", onMove);
     renderer.domElement.addEventListener("click", onClick);
 
-    let seen = -1, shownHole = -1;
-    const axis = new THREE.Vector3(), tmp = new THREE.Vector3(), prev = new THREE.Vector3(NaN, 0, NaN);
+    let seen = -1, shownHole = -1, sentFor: GameState | null = null;
+    const axis = new THREE.Vector3(), tmp = new THREE.Vector3(), prev = new THREE.Vector3(NaN, 0, NaN), stand = new THREE.Vector3();
     const layoutHole = (g: GameState) => {
       const h = HOLES[g.hole];
-      for (const b of blocks) { group.remove(b); b.geometry.dispose(); }
-      blocks.length = 0;
-      for (const b of h.blocks) {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(b.w, RIM_H, b.d), wood);
-        m.position.set(b.x, tableTop + 0.0075 + RIM_H / 2 + GREEN_H * 0.5, b.z); m.castShadow = true; m.receiveShadow = true;
-        group.add(m); blocks.push(m);
-      }
-      cup.position.x = h.cup[0]; cup.position.z = h.cup[1];
-      pin.position.x = h.cup[0]; pin.position.z = h.cup[1];
+      shape(h);
+      const cy = height(h, h.cup[0], h.cup[1]);
+      cup.position.set(h.cup[0], cy - 0.009, h.cup[1]);
+      rim.position.set(h.cup[0], cy + 0.0015, h.cup[1]);
+      pin.position.set(h.cup[0], cy, h.cup[1]);
+      ts.lightAt((h.cup[0] + h.tee[0]) / 2, (h.cup[1] + h.tee[1]) / 2);
     };
+    const yOf = (g: GameState, x: number, z: number) => height(HOLES[g.hole], x, z);
     ts.onFrame = (dt) => {
       ts.view = viewRef.current;
       const g = store.game;
       if (!g) return;
-      if (store.version !== seen) { seen = store.version; if (store.actor !== null) ts.reach(store.actor); }
+      if (store.version !== seen) { seen = store.version; }
       if (g.hole !== shownHole) { shownHole = g.hole; layoutHole(g); }
+      const h = HOLES[g.hole];
       const p = store.putt;
+      // The fly stands by its ball, off the line, and steps to it for its putt.
+      if (sentFor !== g || (p && p.player === 1 && p.t === 0)) {
+        sentFor = g;
+        const [fx, fz] = g.balls[1];
+        const toCup = yawToward(fx, fz, h.cup[0], h.cup[1]);
+        // Beside its ball to putt; otherwise well off to the side, out of your line.
+        if (g.status === "active" && g.turn === 1 && !g.holed[1]) { ts.send(fx + 0.09 * Math.cos(toCup), fz - 0.09 * Math.sin(toCup), toCup + Math.PI / 2); }
+        else { ts.send(fx + 0.6 * Math.cos(toCup) - 0.25 * Math.sin(toCup), fz - 0.6 * Math.sin(toCup) - 0.25 * Math.cos(toCup), toCup); }
+      }
+      if (p && p.player === 1 && p.t === 0) ts.reach();
       for (let i = 0; i < 2; i++) {
         const b = balls[i];
         if (p && p.player === i) {
@@ -141,37 +164,36 @@ function GolfView({ store, view, body, onPutt, onSettled, className }: { store: 
           const path = p.result.path;
           const k = Math.min(path.length / 2 - 1, Math.floor(p.t * 60));
           const x = path[k * 2], z = path[k * 2 + 1];
-          if (!Number.isNaN(prev.x)) {
-            const dx = x - prev.x, dz = z - prev.z, d = Math.hypot(dx, dz);
-            if (d > 1e-6) { axis.set(dz / d, 0, -dx / d); b.rotateOnWorldAxis(axis, d / BALL_R); }
-          }
+          if (!Number.isNaN(prev.x)) { const dx = x - prev.x, dz = z - prev.z, d = Math.hypot(dx, dz); if (d > 1e-6) { axis.set(dz / d, 0, -dx / d); b.rotateOnWorldAxis(axis, d / BALL_R); } }
           prev.set(x, 0, z);
           const sunk = p.result.holed && k >= path.length / 2 - 1;
-          b.position.set(x, sunk ? BALL_Y - 0.012 : BALL_Y, z);
+          b.position.set(x, yOf(g, x, z) + (sunk ? -0.012 : BALL_R), z);
           b.visible = true;
           if (p.t >= p.result.duration + 0.5) { store.settle(); prev.x = NaN; settledRef.current(); }
         } else {
           const at = g.balls[i];
           b.visible = !g.holed[i] || g.status === "active";
-          tmp.set(at[0], g.holed[i] ? BALL_Y - 0.012 : BALL_Y, at[1]);
+          tmp.set(at[0], yOf(g, at[0], at[1]) + (g.holed[i] ? -0.012 : BALL_R), at[1]);
           b.position.lerp(tmp, Math.min(1, dt * 8));
         }
       }
-      // The flag leans out of the way when a ball is near the cup.
-      pin.rotation.z = Math.min(0.5, pin.rotation.z + (Math.hypot(balls[0].position.x - cup.position.x, balls[0].position.z - cup.position.z) < 0.06 || Math.hypot(balls[1].position.x - cup.position.x, balls[1].position.z - cup.position.z) < 0.06 ? 0.03 : -0.03));
-      pin.rotation.z = Math.max(0, pin.rotation.z);
+      // You stand behind your ball, looking at the cup.
+      const [bx, bz] = g.balls[0];
+      if (viewRef.current === "top") ts.place(ORIGIN, 0);
+      else { stand.set(bx, yOf(g, bx, bz), bz); ts.place(stand, yawToward(bx, bz, h.cup[0], h.cup[1])); }
       const mine = g.status === "active" && g.turn === 0 && !p && store.target;
       line.visible = mark.visible = !!mine;
       if (mine && store.target) {
-        const [bx, bz] = g.balls[0];
+        const [tx, tz] = store.target;
         const pts = lineGeo.attributes.position as THREE.BufferAttribute;
-        pts.setXYZ(0, bx, BALL_Y, bz); pts.setXYZ(1, store.target[0], BALL_Y, store.target[1]); pts.needsUpdate = true;
-        mark.position.set(store.target[0], TOP + 0.0008, store.target[1]);
+        for (let i = 0; i < N; i++) { const u = i / (N - 1), x = bx + (tx - bx) * u, z = bz + (tz - bz) * u; pts.setXYZ(i, x, yOf(g, x, z) + 0.004, z); }
+        pts.needsUpdate = true;
+        mark.position.set(tx, yOf(g, tx, tz) + 0.004, tz);
       }
     };
     (window as unknown as { __gflyGolf?: unknown }).__gflyGolf = {
       state: () => store.game, aim: (x: number, z: number) => store.setTarget([x, z]), putt: () => puttRef.current(),
-      point: (x: number, z: number) => ts.toScreen(new THREE.Vector3(x, TOP, z)),
+      point: (x: number, z: number) => { const g = store.game; return ts.toScreen(new THREE.Vector3(x, g ? height(HOLES[g.hole], x, z) : 0, z)); },
     };
 
     return () => {
@@ -209,7 +231,7 @@ export function GolfTable() {
     if (!g || g.status !== "active" || store.putt) return;
     pending.current = { result, player, code };
     setRolling(true);
-    store.play(result, player, player === 0 ? ME : FLY);
+    store.play(result, player);
   }, [store]);
 
   const puttMine = useCallback(() => {
@@ -236,7 +258,6 @@ export function GolfTable() {
     }
   }, [store]);
 
-  // The fly's putt.
   useEffect(() => {
     if (!game || game.status !== "active" || game.turn !== 1 || rolling) return;
     let cancelled = false;
@@ -247,9 +268,9 @@ export function GolfTable() {
       if (cancelled) return;
       const chosen = r?.item ?? cands[0];
       // The read was exact; the stroke is not.
-      putt(simulate(HOLES[game.hole], game.balls[1], chosen.angle + (Math.random() - 0.5) * 0.05, chosen.speed * (0.94 + Math.random() * 0.12)), 1, r ? code(chosen) : null);
+      putt(simulate(HOLES[game.hole], game.balls[1], chosen.angle + (Math.random() - 0.5) * 0.04, chosen.speed * (0.95 + Math.random() * 0.1)), 1, r ? code(chosen) : null);
     };
-    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 900);
+    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 1500);
     return () => { cancelled = true; if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
   }, [game, rolling, putt]);
 
@@ -280,7 +301,7 @@ export function GolfTable() {
             <span className="t-foot num">{status}</span>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-1.5 pointer-events-auto">
+            <div className="hud pointer-events-auto gap-1.5" style={{ flexDirection: "row" }}>
               <div className="seg seg-sm">
                 {(["seat", "top"] as const).map((v) => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{lt(v === "seat" ? "view.seat" : "view.top")}</button>)}
               </div>

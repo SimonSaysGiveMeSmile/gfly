@@ -1,9 +1,10 @@
 /**
- * The fly's putting: straight at the cup, a lag that stops short, and a
- * bank off each rim aimed at the cup's reflection, all rolled in the same
- * simulator to see where they finish. The best few are the candidates.
+ * The fly's putting: it reads the green by trying lines, the cup's line at
+ * a few paces and a fan of offsets either side for the break, all rolled
+ * in the same simulator to see where they finish. The best few are the
+ * candidates.
  */
-import { GREEN, HOLES, simulate, speedFor, type GameState, type Putt } from "./engine";
+import { HOLES, simulate, speedFor, type GameState, type Putt } from "./engine";
 
 export interface Line { angle: number; speed: number; label: string; result: Putt; score: number }
 
@@ -11,27 +12,17 @@ export function getBestLines(state: GameState, player: 0 | 1, topN = 3): Line[] 
   const hole = HOLES[state.hole];
   const [bx, bz] = state.balls[player];
   const [cx, cz] = hole.cup;
-  const aimAt = (tx: number, tz: number, extra: number, label: string) => {
-    const d = Math.hypot(tx - bx, tz - bz);
-    return { angle: Math.atan2(tx - bx, -(tz - bz)), speed: speedFor(d + extra), label };
-  };
-  const tries = [
-    aimAt(cx, cz, 0.05, "cup"),
-    aimAt(cx, cz, -0.03, "lag"),
-    aimAt(cx, cz, 0.12, "firm"),
-  ];
-  const half = GREEN / 2;
-  // Bank shots: aim at the cup mirrored in each rim. The bounce loses pace, so ask for a little more.
-  tries.push(aimAt(-half * 2 - cx, cz, 0.16, "bank W"));
-  tries.push(aimAt(half * 2 - cx, cz, 0.16, "bank E"));
-  tries.push(aimAt(cx, -half * 2 - cz, 0.16, "bank N"));
-  tries.push(aimAt(cx, half * 2 - cz, 0.16, "bank S"));
-  const lines: Line[] = tries.map((t) => {
-    const jitter = (Math.random() - 0.5) * 0.02;
-    const result = simulate(hole, [bx, bz], t.angle + jitter, t.speed);
-    const dist = Math.hypot(result.final[0] - cx, result.final[1] - cz);
-    return { ...t, angle: t.angle + jitter, result, score: result.holed ? 100 : -dist * 100 };
-  });
+  const d = Math.hypot(cx - bx, cz - bz);
+  const base = Math.atan2(cx - bx, -(cz - bz));
+  const lines: Line[] = [];
+  for (const off of [0, 1.5, -1.5, 3, -3, 5, -5, 8, -8]) {
+    for (const k of [0.98, 1.06, 1.16, 1.3]) {
+      const angle = base + (off * Math.PI) / 180, speed = speedFor(d * k);
+      const result = simulate(hole, [bx, bz], angle, speed);
+      const dist = Math.hypot(result.final[0] - cx, result.final[1] - cz);
+      lines.push({ angle, speed, label: `${off === 0 ? "straight" : `${Math.abs(off)}° ${off > 0 ? "right" : "left"}`}, ${k < 1 ? "soft" : k < 1.1 ? "firm" : k < 1.2 ? "brisk" : "hard"}`, result, score: result.holed ? 100 - k : -dist * 100 });
+    }
+  }
   lines.sort((a, b) => b.score - a.score);
   return lines.slice(0, topN);
 }

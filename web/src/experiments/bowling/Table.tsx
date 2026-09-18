@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * Bowling in the saloon. A lane of Poly Haven wood runs down the bar
- * table with dark gutters either side, ten turned pins stand at the far
- * end, and the ball is wrapped in the red leather texture. You bowl from
- * the south side; one fly in a hat bowls from the north stool. A roll is
- * worked out to the end by the engine and then played back, pins toppling
- * on cue, so the fly can try its lines in the same physics first.
+ * Bowling in the garden. A lane of Poly Haven wood lies on the lawn on a
+ * low wooden bed with dark gutters and a pit at the end, ten turned pins
+ * stand on the deck, and the ball wears the red leather texture. You bowl
+ * from the approach with the camera as your eyes; one fly waits beside
+ * you and steps up for its own ball. A roll is worked out to the end by
+ * the rigid-body engine and then played back, pins toppling on cue.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { TableScene, type Preset } from "@/lib/three/tableScene";
+import { FieldScene } from "@/lib/three/fieldScene";
+import type { Preset } from "@/lib/three/tableScene";
 import type { BodyKind } from "@/lib/three/body";
 import { useLocalT } from "@/lib/i18n";
 import { useMedia } from "@/lib/useMedia";
@@ -20,37 +21,38 @@ import { brainChoose, brainTeach, codeOf } from "../shared/brainPlay";
 import { Lobby, NAMES, TABLE_FRAME } from "../shared/Lobby";
 import { dot } from "../shared/tableAssets";
 import { dict } from "./dict";
-import { applyRoll, BALL_R, createGame, FOUL_Z, LANE_L, LANE_W, PIN_H, PIN_R, PINS, roll, scoreFrames, type GameState, type RollResult } from "./engine";
+import { APPROACH, applyRoll, BALL_R, createGame, FOUL_Z, GUTTER_W, HEAD_Z, LANE_L, LANE_W, PIN_H, PIN_R, PINS, PIT_Z, roll, scoreFrames, type GameState, type RollResult } from "./engine";
 import { getBestLines } from "./bot";
 
 const ME = 0, FLY = 2;
 const SEATS = TABLE_SEATS.filter((s) => s.seat === FLY);
-const BASE_H = 0.03;
+const BED_H = 0.03;
+const WAIT: [number, number] = [-0.3, FOUL_Z - 0.02];         // where the fly waits, beside the lane just ahead of you
 type Hook = "left" | "straight" | "right";
-const HOOK: Record<Hook, number> = { left: -0.06, straight: 0, right: 0.06 };
+const HOOK: Record<Hook, number> = { left: -0.045, straight: 0, right: 0.045 };
 
 type View = "seat" | "top";
 const PRESETS: Record<View, Preset> = {
-  seat: { pos: [0, 0.52, 0.96], look: [0, 0.02, -0.08], fov: 46 },
-  top: { pos: [0, 0.98, -0.02], look: [0, 0.03, -0.06], fov: 40 },
+  seat: { pos: [0, 0.22, FOUL_Z + 0.5], look: [0, 0.03, HEAD_Z], fov: 52 },
+  top: { pos: [0, 2.2, FOUL_Z - 0.5], look: [0, 0, HEAD_Z + 0.2], fov: 50 },
 };
 
 class Store {
   game: GameState | null = null;
-  roll: { result: RollResult; t: number } | null = null;
+  roll: { result: RollResult; t: number; by: 0 | 1 } | null = null;
   targetX = 0;
   hook: Hook = "straight";
   actor: number | null = null;
   version = 0;
   bump(actor: number | null = null) { this.actor = actor; this.version++; }
   set(game: GameState) { this.game = game; }
-  play(result: RollResult, actor: number) { this.roll = { result, t: 0 }; this.bump(actor); }
+  play(result: RollResult, by: 0 | 1) { this.roll = { result, t: 0, by }; this.bump(by === 0 ? ME : FLY); }
   settle() { this.roll = null; }
-  setTarget(x: number) { this.targetX = Math.max(-0.085, Math.min(0.085, x)); }
+  setTarget(x: number) { this.targetX = Math.max(-LANE_W / 2 + 0.01, Math.min(LANE_W / 2 - 0.01, x)); }
   setHook(h: Hook) { this.hook = h; }
 }
 
-export const startX = (targetX: number) => targetX * 0.35;
+export const startX = (targetX: number) => targetX * 0.3;
 
 function BowlingView({ store, view, body, onRoll, onSettled, className }: { store: Store; view: View; body: BodyKind; onRoll: () => void; onSettled: () => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -62,33 +64,44 @@ function BowlingView({ store, view, body, onRoll, onSettled, className }: { stor
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const ts = new TableScene(el, { body, set: "saloon", hat: "cowboy", presets: PRESETS, view: viewRef.current, seated: [FLY] });
-    const { scene, tableTop, renderer, camera } = ts;
+    const ts = new FieldScene(el, { body, presets: PRESETS, view: viewRef.current, creature: { pos: [WAIT[0], BED_H, WAIT[1]], yaw: 0 } });
+    const { scene, renderer, camera } = ts;
     const group = new THREE.Group();
     scene.add(group);
-    const LANE_Y = tableTop + BASE_H;
+    const LANE_Y = BED_H;
     const BALL_Y = LANE_Y + BALL_R;
+    ts.lightAt(0, HEAD_Z + 0.6);
 
-    // The lane.
+    // The lane on its bed: approach, lane, gutters, deck, pit.
     const loader = new THREE.TextureLoader();
-    const tex = (f: string) => { const t = loader.load(`/assets/tex/wood_table_001/${f}`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 4); return t; };
-    const laneMap = tex("diffuse.jpg"); laneMap.colorSpace = THREE.SRGBColorSpace;
-    const lane = new THREE.MeshStandardMaterial({ map: laneMap, normalMap: tex("nor_gl.jpg"), roughnessMap: tex("rough.jpg"), color: 0xf0d3a0, roughness: 0.35 });
-    const dark = new THREE.MeshStandardMaterial({ map: laneMap, color: 0x3a2a1c, roughness: 0.7 });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(LANE_W + 0.12, BASE_H, LANE_L + 0.1), dark);
-    base.position.y = tableTop + BASE_H / 2; base.castShadow = true; base.receiveShadow = true; group.add(base);
-    const boards = new THREE.Mesh(new THREE.BoxGeometry(LANE_W, 0.008, LANE_L + 0.06), lane);
-    boards.position.y = LANE_Y - 0.004 + 0.004; boards.receiveShadow = true; group.add(boards);
-    const gutterMat = new THREE.MeshStandardMaterial({ color: 0x15100c, roughness: 0.6, metalness: 0.2 });
+    const tex = (f: string, rz: number) => { const t = loader.load(`/assets/tex/wood_table_001/${f}`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, rz); return t; };
+    const laneMap = tex("diffuse.jpg", 14); laneMap.colorSpace = THREE.SRGBColorSpace;
+    const lane = new THREE.MeshStandardMaterial({ map: laneMap, normalMap: tex("nor_gl.jpg", 14), roughnessMap: tex("rough.jpg", 14), color: 0xf0d3a0, roughness: 0.3 });
+    const darkMap = tex("diffuse.jpg", 6); darkMap.colorSpace = THREE.SRGBColorSpace;
+    const dark = new THREE.MeshStandardMaterial({ map: darkMap, color: 0x4a3626, roughness: 0.7 });
+    const total = APPROACH + LANE_L + (HEAD_Z - PIT_Z) + 0.2;
+    const zMid = (FOUL_Z + APPROACH + PIT_Z - 0.2) / 2;
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(LANE_W + GUTTER_W * 2 + 0.08, BED_H, total), dark);
+    bed.position.set(0, BED_H / 2, zMid); bed.castShadow = true; bed.receiveShadow = true; group.add(bed);
+    const boards = new THREE.Mesh(new THREE.BoxGeometry(LANE_W, 0.006, APPROACH + LANE_L + (HEAD_Z - PIT_Z)), lane);
+    boards.position.set(0, LANE_Y + 0.001, (FOUL_Z + APPROACH + PIT_Z) / 2); boards.receiveShadow = true; group.add(boards);
+    const gutterMat = new THREE.MeshStandardMaterial({ color: 0x15110d, roughness: 0.5, metalness: 0.3 });
     for (const sx of [-1, 1]) {
-      const g = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.006, LANE_L + 0.06), gutterMat);
-      g.position.set(sx * (LANE_W / 2 + 0.024), LANE_Y - 0.007, 0); group.add(g);
+      const g = new THREE.Mesh(new THREE.BoxGeometry(GUTTER_W, 0.004, LANE_L + (HEAD_Z - PIT_Z)), gutterMat);
+      g.position.set(sx * (LANE_W / 2 + GUTTER_W / 2), LANE_Y - 0.008, (FOUL_Z + PIT_Z) / 2); group.add(g);
     }
-    // The foul line and the arrows, faint.
-    const foul = new THREE.Mesh(new THREE.PlaneGeometry(LANE_W, 0.004), new THREE.MeshBasicMaterial({ color: 0x2a1c12 }));
-    foul.rotation.x = -Math.PI / 2; foul.position.set(0, LANE_Y + 0.0006, FOUL_Z); group.add(foul);
+    const pit = new THREE.Mesh(new THREE.BoxGeometry(LANE_W + GUTTER_W * 2, 0.16, 0.2), new THREE.MeshStandardMaterial({ color: 0x0b0908, roughness: 1 }));
+    pit.position.set(0, LANE_Y + 0.08 - 0.02, PIT_Z - 0.1); group.add(pit);
+    const foul = new THREE.Mesh(new THREE.PlaneGeometry(LANE_W, 0.006), new THREE.MeshBasicMaterial({ color: 0x2a1c12 }));
+    foul.rotation.x = -Math.PI / 2; foul.position.set(0, LANE_Y + 0.005, FOUL_Z); group.add(foul);
+    // The arrows a bowler aims over.
+    const arrowMat = new THREE.MeshBasicMaterial({ color: 0x3a2a1a });
+    for (let i = -3; i <= 3; i++) {
+      const a = new THREE.Mesh(new THREE.PlaneGeometry(0.006, 0.02), arrowMat);
+      a.rotation.x = -Math.PI / 2; a.position.set(i * PIN_SPACING_X, LANE_Y + 0.005, FOUL_Z - 0.55 - Math.abs(i) * 0.02); group.add(a);
+    }
 
-    // Pins: one turned profile, a pivot at each base so it can topple.
+    // Pins on pivots at their bases.
     const profile = [[0, 0], [0.55, 0], [0.95, 0.2], [1, 0.42], [0.82, 0.66], [0.5, 0.86], [0.52, 1.05], [0.6, 1.24], [0.42, 1.44], [0, 1.5]].map(([r, y]) => new THREE.Vector2(r * PIN_R, y * (PIN_H / 1.5)));
     const pinGeo = new THREE.LatheGeometry(profile, 28);
     const pinMat = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.35 });
@@ -105,9 +118,9 @@ function BowlingView({ store, view, body, onRoll, onSettled, className }: { stor
     // The ball.
     const leather = loader.load("/assets/tex/leather_red_02/diffuse.jpg"); leather.colorSpace = THREE.SRGBColorSpace;
     const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 20), new THREE.MeshStandardMaterial({ map: leather, normalMap: loader.load("/assets/tex/leather_red_02/nor_gl.jpg"), color: 0xb03a3a, roughness: 0.25 }));
-    ball.castShadow = true; ball.receiveShadow = true; ball.position.set(0, BALL_Y, FOUL_Z + 0.03); group.add(ball);
+    ball.castShadow = true; ball.receiveShadow = true; ball.position.set(0, BALL_Y, FOUL_Z + 0.06); group.add(ball);
 
-    // Aiming: a line from where the ball starts to where it should arrive.
+    // Aiming.
     const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
     const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.5 }));
     group.add(line);
@@ -127,8 +140,8 @@ function BowlingView({ store, view, body, onRoll, onSettled, className }: { stor
     renderer.domElement.addEventListener("click", onClick);
 
     const axis = new THREE.Vector3(), tmp = new THREE.Vector3(), prev = new THREE.Vector3(NaN, 0, NaN);
-    const upright = new THREE.Quaternion(), fallQ = new THREE.Quaternion();
-    let seen = -1, shown: GameState | null = null;
+    const upright = new THREE.Quaternion(), fallQ = new THREE.Quaternion(), lieQ = new THREE.Quaternion();
+    let seen = -1, shown: GameState | null = null, sentFor: GameState | null = null;
     const layoutPins = (g: GameState) => {
       for (let i = 0; i < 10; i++) { const p = pins[i]; p.visible = g.standing[i]; p.quaternion.copy(upright); p.position.set(PINS[i][0], LANE_Y, PINS[i][1]); }
     };
@@ -136,41 +149,54 @@ function BowlingView({ store, view, body, onRoll, onSettled, className }: { stor
       ts.view = viewRef.current;
       const g = store.game;
       if (!g) return;
-      if (store.version !== seen) { seen = store.version; if (store.actor !== null) ts.reach(store.actor); }
+      if (store.version !== seen) { seen = store.version; }
       const r = store.roll;
+      // The fly steps up to the line for its ball and back beside you afterwards.
+      if (sentFor !== g || (r && r.by === 1 && r.t === 0)) {
+        sentFor = g;
+        if (g.status === "active" && g.player === 1) ts.send(startX(store.targetX) - 0.06, FOUL_Z + 0.16, 0); else ts.send(WAIT[0], WAIT[1], 0.35);
+      }
       if (r) {
         if (shown !== g) { shown = g; layoutPins(g); }
+        if (r.t === 0 && r.by === 1) ts.reach();
         r.t += dt;
-        const path = r.result.path;
-        const i = Math.min(path.length / 2 - 1, Math.floor(r.t * 60));
-        const x = path[i * 2], z = path[i * 2 + 1];
-        const inGutter = r.result.gutter && Math.abs(x) > LANE_W / 2;
-        if (!Number.isNaN(prev.x)) {
-          const dx = x - prev.x, dz = z - prev.z, d = Math.hypot(dx, dz);
-          if (d > 1e-6) { axis.set(dz / d, 0, -dx / d); ball.rotateOnWorldAxis(axis, d / BALL_R); }
+        const frames = r.result.frames;
+        const i = Math.min(frames.length - 1, Math.floor(r.t * 60));
+        const f = frames[i];
+        if (!Number.isNaN(f[0])) {
+          const x = f[0], z = f[1];
+          const inGutter = Math.abs(x) > LANE_W / 2;
+          if (!Number.isNaN(prev.x)) { const dx = x - prev.x, dz = z - prev.z, d = Math.hypot(dx, dz); if (d > 1e-6) { axis.set(dz / d, 0, -dx / d); ball.rotateOnWorldAxis(axis, d / BALL_R); } }
+          prev.set(x, 0, z);
+          ball.visible = true; ball.position.set(x, inGutter ? BALL_Y - 0.012 : BALL_Y, z);
+        } else ball.visible = false;
+        for (let p = 0; p < 10; p++) {
+          const o = 2 + p * 6;
+          const pin = pins[p];
+          if (!g.standing[p]) { pin.visible = false; continue; }
+          if (Number.isNaN(f[o])) { pin.visible = false; continue; }
+          pin.visible = true;
+          pin.position.set(f[o], LANE_Y, f[o + 1]);
+          if (f[o + 2] > 0.5) {
+            const k = Math.min(1, Math.max(0, (r.t - f[o + 5]) / 0.3));
+            const e = 1 - (1 - k) * (1 - k);
+            axis.set(f[o + 4], 0, -f[o + 3]).normalize();
+            lieQ.setFromAxisAngle(tmp.set(0, 1, 0), p * 0.7);
+            pin.quaternion.copy(fallQ.setFromAxisAngle(axis, e * Math.PI * 0.49)).multiply(lieQ);
+          } else pin.quaternion.copy(upright);
         }
-        prev.set(x, 0, z);
-        ball.position.set(x, inGutter ? BALL_Y - 0.01 : BALL_Y, z);
-        for (const f of r.result.falls) {
-          if (r.t < f.t) continue;
-          const k = Math.min(1, (r.t - f.t) / 0.35);
-          const e = 1 - (1 - k) * (1 - k);
-          axis.set(f.dz, 0, -f.dx).normalize();
-          pins[f.pin].quaternion.copy(fallQ.setFromAxisAngle(axis, e * Math.PI * 0.48));
-          pins[f.pin].position.set(PINS[f.pin][0] + f.dx * e * 0.035, LANE_Y, PINS[f.pin][1] + f.dz * e * 0.035);
-        }
-        if (r.t >= r.result.duration + 0.7) { store.settle(); prev.x = NaN; settledRef.current(); }
+        if (r.t >= r.result.duration + 0.6) { store.settle(); prev.x = NaN; ball.visible = true; settledRef.current(); }
       } else {
         if (shown !== g) { shown = g; layoutPins(g); }
-        tmp.set(startX(store.targetX), BALL_Y, FOUL_Z + 0.03);
+        tmp.set(startX(store.targetX), BALL_Y, FOUL_Z + 0.06);
         ball.position.lerp(tmp, Math.min(1, dt * 6));
       }
       const mine = g.status === "active" && g.player === 0 && !r;
       line.visible = mark.visible = mine;
       if (mine) {
         const pts = lineGeo.attributes.position as THREE.BufferAttribute;
-        pts.setXYZ(0, startX(store.targetX), BALL_Y, FOUL_Z); pts.setXYZ(1, store.targetX, BALL_Y, PINS[0][1]); pts.needsUpdate = true;
-        mark.position.set(store.targetX, LANE_Y + 0.0008, PINS[0][1]);
+        pts.setXYZ(0, startX(store.targetX), BALL_Y, FOUL_Z); pts.setXYZ(1, store.targetX, BALL_Y, HEAD_Z); pts.needsUpdate = true;
+        mark.position.set(store.targetX, LANE_Y + 0.007, HEAD_Z);
       }
     };
     (window as unknown as { __gflyBowling?: unknown }).__gflyBowling = {
@@ -189,6 +215,7 @@ function BowlingView({ store, view, body, onRoll, onSettled, className }: { stor
 
   return <div ref={host} className={className} />;
 }
+const PIN_SPACING_X = LANE_W / 8;
 
 const mark = (f: number[], i: number, tenth: boolean) => {
   const v = f[i];
@@ -212,13 +239,13 @@ export function BowlingTable() {
   const onApi = useCallback((a: BrainsApi | null) => { brainsApi.current = a; }, []);
   const labels = useRef(new Map<number, string>());
   const timer = useRef<number | null>(null);
-  const pending = useRef<{ result: RollResult; by: number; code: number | null } | null>(null);
+  const pending = useRef<{ result: RollResult; by: 0 | 1; code: number | null } | null>(null);
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
   const start = useCallback(() => { const g = createGame(); store.set(g); setGame(g); store.bump(); }, [store]);
   const setHook = useCallback((h: Hook) => { store.setHook(h); setHookState(h); }, [store]);
 
-  const bowl = useCallback((result: RollResult, by: number, code: number | null) => {
+  const bowl = useCallback((result: RollResult, by: 0 | 1, code: number | null) => {
     const g = store.game;
     if (!g || g.status !== "active" || store.roll) return;
     pending.current = { result, by, code };
@@ -229,7 +256,7 @@ export function BowlingTable() {
   const rollMine = useCallback(() => {
     const g = store.game;
     if (!g || g.player !== 0 || rolling) return;
-    bowl(roll(g.standing, startX(store.targetX), store.targetX, HOOK[store.hook]), ME, null);
+    bowl(roll(g.standing, startX(store.targetX), store.targetX, HOOK[store.hook]), 0, null);
   }, [store, rolling, bowl]);
 
   const settled = useCallback(() => {
@@ -239,14 +266,13 @@ export function BowlingTable() {
     const next = applyRoll(g, p.result);
     store.set(next); setGame(next); store.bump();
     setRolling(false);
-    if (p.by === FLY && p.code !== null && next.last) {
+    if (p.by === 1 && p.code !== null && next.last) {
       const k = next.last.kind;
       if (k === "strike" || k === "spare" || next.last.pins >= 8) brainTeach(brainsApi.current, FLY, [p.code], 1);
       else if (next.last.pins < 6) brainTeach(brainsApi.current, FLY, [p.code], -1);
     }
   }, [store]);
 
-  // The fly's ball.
   useEffect(() => {
     if (!game || game.status !== "active" || game.player !== 1 || rolling) return;
     let cancelled = false;
@@ -258,9 +284,9 @@ export function BowlingTable() {
       if (cancelled) return;
       const chosen = r?.item ?? cands[0];
       // The line was read in the simulator; the arm delivers it a little off, like anyone.
-      bowl(roll(game.standing, chosen.x0, chosen.targetX + (Math.random() - 0.5) * 0.022, chosen.hook + (Math.random() - 0.5) * 0.05), FLY, r ? code(chosen) : null);
+      bowl(roll(game.standing, chosen.x0, chosen.targetX + (Math.random() - 0.5) * 0.02, chosen.hook + (Math.random() - 0.5) * 0.05), 1, r ? code(chosen) : null);
     };
-    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 900);
+    timer.current = window.setTimeout(() => { timer.current = null; run().catch((e) => console.error(e)); }, 1400);
     return () => { cancelled = true; if (timer.current) { window.clearTimeout(timer.current); timer.current = null; } };
   }, [game, rolling, bowl]);
 
