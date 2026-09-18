@@ -20,9 +20,9 @@ const PERF = [
 
 export default function HowItWorks() {
   return (
-    <article className="mx-auto max-w-[900px] px-6 py-16 lg:px-10">
+    <article className="mx-auto h-full max-w-[900px] px-6 py-8 lg:px-10 flex flex-col overflow-y-auto">
       <h1 className="t-large">How it works</h1>
-      <p className="t-body mt-5">Short version: the whole brain fits in a tab and runs at close to real time. Here is how.</p>
+      <p className="t-body mt-4">Short version: the whole brain fits in a tab and runs at close to real time. Here is how.</p>
 
       <Section title="1. The data is too big to load directly">
         <p>The release is up to 13 GB of tables in a Google Cloud bucket, and the bucket does not allow web pages to read it. So the work is done once, offline, and the result is shipped as ordinary files.</p>
@@ -54,10 +54,10 @@ export default function HowItWorks() {
         <p>Dropping weak connections loses 28% of synapses. Every synapse is the same strength per count, and every neuron the same type, which is not true in the animal. The time step is 1 ms rather than the 0.1 ms a careful study would use. For behaviour on the scale of a turn or a jump, that is fine.</p>
       </Section>
 
-      <div className="glass mt-12 p-8">
+      <div className="glass mt-8 p-6">
         <h2 className="t-title">Does it act like a fly?</h2>
         <p className="t-body mt-2">That is what The Room tests.</p>
-        <Link href="/lab/baseline-room" className="btn-primary mt-5 inline-block">Open The Room</Link>
+        <Link href="/lab/baseline-room" className="btn-primary mt-4 inline-block">Open The Room</Link>
       </div>
     </article>
   );
@@ -65,9 +65,9 @@ export default function HowItWorks() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12">
+    <section className="mt-8">
       <h2 className="t-title">{title}</h2>
-      <div className="t-body mt-4 space-y-4 [&_b]:text-label">{children}</div>
+      <div className="t-body mt-3 space-y-3 [&_b]:text-label">{children}</div>
     </section>
   );
 }

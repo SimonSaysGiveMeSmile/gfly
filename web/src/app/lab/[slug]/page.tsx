@@ -19,21 +19,21 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
   if (!product) notFound();
 
   return (
-    <article className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
-      <header className="mb-6">
+    <article className="mx-auto h-full max-w-[1400px] px-6 py-3 lg:px-10 flex flex-col overflow-hidden">
+      <header className="mb-3 flex-shrink-0">
         <Link href="/" className="t-foot hover:text-label">← Experiments</Link>
-        <h1 className="t-large mt-3">{product.title}</h1>
-        <p className="t-body mt-3 max-w-2xl">{product.summary}</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <div className="glass p-4">
+        <h1 className="t-large mt-2">{product.title}</h1>
+        <p className="t-body mt-2 max-w-2xl">{product.summary}</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="glass p-3">
             <p className="t-cap">What it claims</p>
             <p className="mt-2 text-[15px]">{product.claim}</p>
           </div>
-          <div className="glass p-4">
+          <div className="glass p-3">
             <p className="t-cap">Learning</p>
             <p className="t-body mt-2 text-[15px]">{LEARNING_COPY[product.learning]}</p>
           </div>
-          <div className="glass p-4">
+          <div className="glass p-3">
             <p className="t-cap">Parts of the brain used</p>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {product.circuits.map((c) => <li key={c} className="pill pill-gray">{c}</li>)}
@@ -42,27 +42,29 @@ export default async function LabPage({ params }: PageProps<"/lab/[slug]">) {
         </div>
       </header>
 
-      {product.status === "live" && product.slug === "baseline-room" ? (
-        <>
-          <Runner />
-          <Findings />
-        </>
-      ) : (
-        <Planned />
-      )}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {product.status === "live" && product.slug === "baseline-room" ? (
+          <>
+            <Runner />
+            <Findings />
+          </>
+        ) : (
+          <Planned />
+        )}
 
-      {product.references && (
-        <footer className="mt-12">
-          <p className="t-cap">Checked against</p>
-          <ul className="mt-2 space-y-1.5">
-            {product.references.map((r) => (
-              <li key={r.href}>
-                <a href={r.href} target="_blank" rel="noreferrer" className="t-foot underline decoration-line underline-offset-4 hover:text-label">{r.label}</a>
-              </li>
-            ))}
-          </ul>
-        </footer>
-      )}
+        {product.references && (
+          <footer className="mt-8">
+            <p className="t-cap">Checked against</p>
+            <ul className="mt-2 space-y-1.5">
+              {product.references.map((r) => (
+                <li key={r.href}>
+                  <a href={r.href} target="_blank" rel="noreferrer" className="t-foot underline decoration-line underline-offset-4 hover:text-label">{r.label}</a>
+                </li>
+              ))}
+            </ul>
+          </footer>
+        )}
+      </div>
     </article>
   );
 }
