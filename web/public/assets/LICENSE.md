@@ -70,3 +70,29 @@ https://ambientcg.com/view?id=Paper001 by Lennart Demes / ambientCG.
 ## Elsewhere in web/public
 
 Mahjong tiles: FluffyStuff's riichi-mahjong-tiles (CC0), see web/public/mahjong/LICENSE.md.
+
+## Animal body pack — `animals/` (fetched by `tools/fetch_animals.py`)
+
+Rigged + animated low-poly glTF bodies that can replace the fly. All CC0 1.0
+(no attribution legally required; credits kept here as a courtesy).
+
+### poly.pizza uploads by Quaternius — CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
+| Local path | Title | Author | Page |
+|---|---|---|---|
+| animals/dog/dog.glb | Dog | Quaternius (https://quaternius.com) | https://poly.pizza/m/2kUk0QqpCg |
+| animals/dog/shiba_inu.glb | Shiba Inu | Quaternius (https://quaternius.com) | https://poly.pizza/m/y4wdQpg767 |
+| animals/cat/cat.glb | Cat | Quaternius (https://quaternius.com) | https://poly.pizza/m/qKICY6xla2 |
+
+Licence as shown on each poly.pizza model page ("CC0 1.0"); Quaternius releases
+all packs under CC0 (https://quaternius.com/license.html).
+
+### Gobkit Free Animal Pack B — CC0 1.0 (https://gobkit.com/freebies, https://gobkit.itch.io/gobkit-free-animal-pack-vol-2)
+
+| Local path | Title | Author | Source |
+|---|---|---|---|
+| animals/bird/blue_jay.glb | Blue (blue jay) | Gobkit | https://gobkit.com/freebies/animalB/Blue.glb |
+| animals/bird/owl.glb | Owl | Gobkit | https://gobkit.com/freebies/animalB/Owl.glb |
+
+Licence text from the Gobkit manifest (https://gobkit.com/api/free): "CC0 1.0
+(public domain) — free for any use, commercial or personal, no attribution required."
