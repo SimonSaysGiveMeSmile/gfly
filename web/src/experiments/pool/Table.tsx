@@ -341,11 +341,11 @@ export function PoolTable() {
 
         {wide && <FlyBrains names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} seats={SEATS} note={lt("brain.note")} />}
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-          <div className="hud pointer-events-none max-w-[50%]">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-2 p-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+          <div className="hud pointer-events-none sm:max-w-[50%]">
             <span className="t-foot">{lastKey ? lt(lastKey) : lt("aim")}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             {game.status === "over" ? (
               <button className="btn-primary text-xs" onClick={start}>{lt("new")}</button>
             ) : (

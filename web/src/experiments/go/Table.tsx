@@ -277,11 +277,11 @@ export function GoTable() {
 
         {wide && <FlyBrains names={names} labelOf={labelOf} enabled={brains} onApi={onApi} active={active} seats={SEATS} note={lt("brain.note")} />}
 
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-          <div className="hud pointer-events-none max-w-[55%]">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-2 p-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+          <div className="hud pointer-events-none sm:max-w-[55%]">
             <span className="t-foot">{note ?? status}</span>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex justify-end gap-1.5">
             {game.status === "active" ? (
               <button className="btn text-xs" disabled={!canPlay} onClick={doPass}>{lt("pass")}</button>
             ) : (
