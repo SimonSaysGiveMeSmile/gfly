@@ -18,6 +18,7 @@ export const metadata: Metadata = {
     title: "GFly",
     description: "164,740 real neurons. Running in your browser.",
     url: "https://gfly.site", siteName: "GFly", type: "website",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: "GFly" }],
   },
 };
 

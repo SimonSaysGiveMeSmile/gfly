@@ -100,3 +100,7 @@ Licence text from the Gobkit manifest (https://gobkit.com/api/free): "CC0 1.0
 ## Room icons — `web/public/icons/`
 
 The sixteen illustrated icons (one per experiment, plus the navigation) were supplied by the site's author for this site and are not from the sources above.
+
+## Logo — `web/public/logo.png`, `web/src/app/icon.png`, `web/src/app/apple-icon.png`
+
+The GFly mark (a fly on an infinity loop) was supplied by the site's author and is not from the sources above.

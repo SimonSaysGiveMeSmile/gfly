@@ -20,7 +20,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 px-3 pt-3 lg:px-4 lg:pt-4" style={{ isolation: "isolate" }}>
       <div className="bar relative mx-auto flex max-w-[1400px] items-center gap-1 px-2 py-1.5 lg:gap-2 lg:px-3 lg:py-2" style={{ borderRadius: 999 }}>
-        <Link href="/" className="t-display px-3 py-1 text-[1.25rem] leading-none">GFly</Link>
+        <Link href="/" className="t-display flex items-center gap-2 px-2 py-1 text-[1.25rem] leading-none"><img src="/logo-96.png" alt="" className="h-8 w-8 rounded-[9px]" />GFly</Link>
         <nav className="ml-auto flex items-center gap-0.5 lg:gap-1">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className="btn hidden md:inline-block text-[13px] lg:text-sm px-2.5 lg:px-3.5" style={{ background: "transparent", fontWeight: 500 }}>
